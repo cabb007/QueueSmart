@@ -3,89 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QueueSmart · interactive test</title>
+    <title>QueueSmart - Patient Dashboard</title>
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <script src="https://cdn.tailwindcss.com"></script>
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
                     colors: {
                         royalblue: {
-                            50: '#f0f4ff', 100: '#e1e9ff', 500: '#2563eb',
-                            600: '#1d4ed8', 700: '#1e40af',
+                            50: '#f0f4ff',
+                            100: '#e1e9ff',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
                         }
                     }
-                }
-            }
+                },
+            },
         }
     </script>
-    <style>
-        body { background: #f8fafc; }
-        .test-panel {
-            background: white;
-            border-radius: 1.5rem;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.04);
-            padding: 1.5rem 1.75rem;
-            border: 1px solid #e9edf2;
-            transition: all 0.15s ease;
-        }
-        .test-panel:hover { border-color: #cdd5df; }
-        .slider-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.03em; color: #64748b; text-transform: uppercase; }
-        .badge-test { background: #f1f5f9; border-radius: 999px; padding: 0.2rem 0.9rem; font-size: 0.7rem; font-weight: 500; color: #1e293b; border: 1px solid #e2e8f0; }
-        .btn-ghost { background: transparent; border: 1px solid #e2e8f0; padding: 0.3rem 1.2rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; color: #1e293b; transition: 0.1s; }
-        .btn-ghost:hover { background: #f1f5f9; border-color: #cbd5e1; }
-        .btn-primary-sm { background: #2563eb; border: none; padding: 0.35rem 1.4rem; border-radius: 999px; font-size: 0.75rem; font-weight: 500; color: white; transition: 0.1s; }
-        .btn-primary-sm:hover { background: #1d4ed8; }
-        .inline-flex-center { display: inline-flex; align-items: center; gap: 0.35rem; }
-    </style>
 </head>
-<body class="font-sans antialiased text-slate-800 min-h-screen pb-12">
+<body class="font-sans bg-slate-50 text-slate-900 min-h-screen">
 
-    <!-- fixed test controller (floating) -->
-    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-3xl test-panel backdrop-blur-sm bg-white/95">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-4 flex-wrap">
-                <div class="flex items-center gap-2">
-                    <span class="slider-label">Queue position</span>
-                    <span id="queueDisplay" class="font-bold text-royalblue-600 text-lg min-w-[2.2rem] text-center">3</span>
-                    <input type="range" id="queueSlider" min="1" max="12" value="3" step="1" 
-                           class="w-32 h-1.5 bg-slate-200 rounded-full accent-royalblue-600 cursor-pointer">
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <span class="slider-label">Live status</span>
-                    <span id="liveStatusBadge" class="badge-test inline-flex-center">
-                        <span id="statusDot" class="w-2 h-2 rounded-full bg-royalblue-500 animate-pulse"></span>
-                        <span id="statusText">2 people ahead</span>
-                    </span>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <button id="resetBtn" class="btn-ghost">↺ reset</button>
-                <button id="randomBtn" class="btn-primary-sm">🎲 random</button>
-            </div>
-        </div>
-        <div class="text-[0.6rem] text-slate-400 mt-2 border-t border-slate-100 pt-1.5 flex gap-3 flex-wrap">
-            <span>⬅️ slider → updates queue, live status & "people ahead"</span>
-            <span>• <span class="font-mono">reset</span> to patient #QS-98421</span>
-        </div>
-    </div>
-
-    <!-- ===== ORIGINAL DASHBOARD (with dynamic data bindings) ===== -->
-    <nav class="bg-white border-b border-slate-200 sticky top-0 z-40">
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
                     <span class="text-2xl font-bold tracking-tight text-royalblue-600">QueueSmart</span>
                 </div>
                 <div class="flex items-center gap-4">
-                    <!-- live status chip (dynamic) -->
-                    <div id="liveChip" class="bg-royalblue-50 px-3 py-1.5 rounded-lg border border-royalblue-100 hidden sm:flex items-center gap-2">
-                        <span id="chipDot" class="w-2 h-2 rounded-full bg-royalblue-500 animate-pulse"></span>
-                        <span id="chipText" class="text-xs font-medium text-royalblue-700">Live Status: 2 people ahead of you</span>
+                    <div class="bg-royalblue-50 px-3 py-1.5 rounded-lg border border-royalblue-100 hidden sm:flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-royalblue-500 animate-pulse"></span>
+                        <span class="text-xs font-medium text-royalblue-700">Live Status: 2 people ahead of you</span>
                     </div>
                     <button class="text-sm font-medium text-slate-600 hover:text-slate-900">Logout</button>
                 </div>
@@ -95,20 +53,33 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- left card: patient info -->
+            
             <div class="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
                 <div class="flex flex-col items-center text-center pb-6 border-b border-slate-100">
-                    <div class="w-24 h-24 bg-royalblue-100 rounded-full flex items-center justify-center text-royalblue-600 text-3xl font-bold mb-3 shadow-inner">JD</div>
+                    <div class="w-24 h-24 bg-royalblue-100 rounded-full flex items-center justify-center text-royalblue-600 text-3xl font-bold mb-3 shadow-inner">
+                        JD
+                    </div>
                     <h2 class="text-xl font-bold text-slate-900 tracking-tight">John Doe</h2>
                     <p class="text-sm text-slate-500">Patient ID: #QS-98421</p>
                 </div>
+
                 <div class="py-6 border-b border-slate-100 space-y-4">
-                    <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Date of Birth</label><p class="text-sm font-medium text-slate-800">October 14, 1992</p></div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Date of Birth</label>
+                        <p class="text-sm font-medium text-slate-800">October 14, 1992</p>
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Age</label><p class="text-sm font-medium text-slate-800">33 Years Old</p></div>
-                        <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Blood Type</label><p class="text-sm font-medium text-slate-800">O Positive (O+)</p></div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Age</label>
+                            <p class="text-sm font-medium text-slate-800">33 Years Old</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Blood Type</label>
+                            <p class="text-sm font-medium text-slate-800">O Positive (O+)</p>
+                        </div>
                     </div>
                 </div>
+
                 <div class="pt-6">
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Emergency Contact</label>
                     <p class="text-sm font-semibold text-slate-800">Jane Doe <span class="font-normal text-slate-500">(Spouse)</span></p>
@@ -116,9 +87,8 @@
                 </div>
             </div>
 
-            <!-- right column (2/3) -->
             <div class="lg:col-span-2 space-y-8">
-                <!-- queue position hero (dynamic) -->
+                
                 <div class="bg-gradient-to-r from-royalblue-600 to-royalblue-700 text-white rounded-2xl p-6 shadow-md shadow-royalblue-100">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                         <div>
@@ -127,22 +97,25 @@
                             <p class="text-white/80 text-xs mt-1">Please remain nearby. You will receive an alert shortly.</p>
                         </div>
                         <div class="flex items-baseline gap-2 bg-white/10 px-5 py-3 rounded-xl border border-white/10 self-start sm:self-center">
-                            <span id="heroQueueNumber" class="text-5xl font-extrabold tracking-tight">3</span>
+                            <span class="text-5xl font-extrabold tracking-tight">3</span>
                             <span class="text-sm font-medium text-white/70">in line</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Current Visit -->
                 <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
                     <h3 class="text-lg font-bold text-slate-900 mb-4 tracking-tight border-b border-slate-100 pb-2">Current Visit Details</h3>
+                    
                     <div class="space-y-4">
-                        <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Reason for Visit Today</label>
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Reason for Visit Today</label>
                             <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
                                 <p class="text-sm text-slate-700 leading-relaxed">Severe cough and congestion lasting over 4 days, mild sore throat, and experiencing alternating fever chills overnight.</p>
                             </div>
                         </div>
-                        <div><label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Current Active Medications</label>
+                        
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Current Active Medications</label>
                             <div class="flex flex-wrap gap-2 mt-1">
                                 <span class="bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 text-xs font-medium rounded-lg">Amoxicillin (500mg)</span>
                                 <span class="bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 text-xs font-medium rounded-lg">Cetirizine (10mg)</span>
@@ -151,109 +124,39 @@
                     </div>
                 </div>
 
-                <!-- Past Medical History -->
                 <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
                     <h3 class="text-lg font-bold text-slate-900 mb-4 tracking-tight border-b border-slate-100 pb-2">Past Medical History</h3>
+                    
                     <div class="divide-y divide-slate-100">
                         <div class="py-3 flex justify-between items-center first:pt-0 last:pb-0">
-                            <div><h4 class="text-sm font-semibold text-slate-800">Annual Comprehensive Physical</h4><p class="text-xs text-slate-500 mt-0.5">Routine health screening & vaccine updates</p></div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-slate-800">Annual Comprehensive Physical</h4>
+                                <p class="text-xs text-slate-500 mt-0.5">Routine health screening and vaccine updates</p>
+                            </div>
                             <span class="text-xs text-slate-400 font-medium">May 14, 2025</span>
                         </div>
+
                         <div class="py-3 flex justify-between items-center first:pt-0 last:pb-0">
-                            <div><h4 class="text-sm font-semibold text-slate-800">Acute Bronchitis Treatment</h4><p class="text-xs text-slate-500 mt-0.5">Prescribed inhaler course and steroid tablets</p></div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-slate-800">Acute Bronchitis Treatment</h4>
+                                <p class="text-xs text-slate-500 mt-0.5">Prescribed inhaler course and steroid tablets</p>
+                            </div>
                             <span class="text-xs text-slate-400 font-medium">Dec 02, 2024</span>
                         </div>
+
                         <div class="py-3 flex justify-between items-center first:pt-0 last:pb-0">
-                            <div><h4 class="text-sm font-semibold text-slate-800">Allergy Evaluation Consultation</h4><p class="text-xs text-slate-500 mt-0.5">Identified mild pollen and dust sensitivity metrics</p></div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-slate-800">Allergy Evaluation Consultation</h4>
+                                <p class="text-xs text-slate-500 mt-0.5">Identified mild pollen and dust sensitivity metrics</p>
+                            </div>
                             <span class="text-xs text-slate-400 font-medium">Aug 19, 2023</span>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </main>
 
-    <script>
-        (function() {
-            // DOM references
-            const queueSlider = document.getElementById('queueSlider');
-            const queueDisplay = document.getElementById('queueDisplay');
-            const heroQueueNumber = document.getElementById('heroQueueNumber');
-
-            const statusText = document.getElementById('statusText');
-            const statusDot = document.getElementById('statusDot');
-            const liveStatusBadge = document.getElementById('liveStatusBadge');
-
-            const chipText = document.getElementById('chipText');
-            const chipDot = document.getElementById('chipDot');
-            const liveChip = document.getElementById('liveChip');
-
-            // helper: update all UI based on queue position (1..12)
-            function updateUI(position) {
-                const pos = Number(position);
-                // clamp
-                const clamped = Math.min(12, Math.max(1, pos));
-                // update slider and displays
-                queueSlider.value = clamped;
-                queueDisplay.textContent = clamped;
-                heroQueueNumber.textContent = clamped;
-
-                // people ahead = position - 1 (if position = 1 => "you're next!")
-                const ahead = clamped - 1;
-                let aheadText = '';
-                let statusColor = 'bg-royalblue-500';
-                if (ahead === 0) {
-                    aheadText = 'You\'re next!';
-                    statusColor = 'bg-emerald-500';
-                } else if (ahead === 1) {
-                    aheadText = '1 person ahead';
-                } else {
-                    aheadText = `${ahead} people ahead`;
-                }
-
-                // update status badge (bottom)
-                statusText.textContent = aheadText;
-                statusDot.className = `w-2 h-2 rounded-full ${statusColor} animate-pulse`;
-
-                // update live chip (top nav)
-                chipText.textContent = `Live Status: ${aheadText}`;
-                chipDot.className = `w-2 h-2 rounded-full ${statusColor} animate-pulse`;
-
-                // optional: if position is 1, add small "you're next" style to chip
-                if (ahead === 0) {
-                    liveChip.classList.add('border-emerald-200', 'bg-emerald-50');
-                    liveChip.classList.remove('border-royalblue-100', 'bg-royalblue-50');
-                } else {
-                    liveChip.classList.remove('border-emerald-200', 'bg-emerald-50');
-                    liveChip.classList.add('border-royalblue-100', 'bg-royalblue-50');
-                }
-            }
-
-            // event listeners
-            queueSlider.addEventListener('input', function(e) {
-                updateUI(e.target.value);
-            });
-
-            // reset to default (position 3)
-            document.getElementById('resetBtn').addEventListener('click', function() {
-                updateUI(3);
-            });
-
-            // random position (1-12)
-            document.getElementById('randomBtn').addEventListener('click', function() {
-                const rand = Math.floor(Math.random() * 12) + 1;
-                updateUI(rand);
-            });
-
-            // initial sync (position 3 as in original)
-            updateUI(3);
-        })();
-    </script>
-
-    <!-- small hint (optional) -->
-    <div class="max-w-7xl mx-auto px-4 text-[0.6rem] text-slate-400 mt-4 flex justify-between">
-        <span>🧪 interactive test · drag slider to simulate queue changes</span>
-        <span>dashboard reflects real-time updates</span>
-    </div>
 </body>
 </html>
