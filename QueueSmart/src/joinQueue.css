@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+body{
+      font-family: 'Inter', sans-serif;
+}
+
+
+.container {
+    display: flex;
+    justify-content: center;
+    background-color: #f3f4f6;
+    font-family: 'Inter', sans-serif;
+}
+
+.joinCard {
+    background-color: white;
+    width: 650px;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.40);
+}
+
+.textBox {
+    width: 100%;
+    height: 42px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    padding-left: 10px;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+.joinButton {
+    width: 100%;
+    height: 45px;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    margin-bottom: 15px;
+}
+
+h1{
+  color: #2563eb;
+}
+
+.subText {
+    color: #6b7280;
+    font-size: 14px;
+    margin-bottom: 25px;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 20px 50px;
+
+    background-color: white;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.logo {
+    color: #2563eb;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+.logoutButton {
+    background: none;
+    border: none;
+    color: #4b5563;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+}
+
+.pageDescription {
+    color: whitesmoke;
+    font-size: 14px;
+    margin-bottom: 25px;
+}
+
+.cardHeader {
+    background-color: #2563eb;
+    color: white;
+
+    padding: 30px;
+
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+.card-content {
+    padding: 30px
+}
+
+.miniText{
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      color: #6b7280;
+}
+
+.boldText{
+      font-weight: 800;
+      font-size: 18px;
+      color: black;
+      font-family: 'Inter', sans-serif;
+
+      margin: 0;
+
+}
+
+.greyBox{
+      background-color: #f8fafc;
+
+      border: 1px solid #e5e7eb;
+
+      border-radius: 8px;
+
+      padding: 15px;
+
+      margin-top: 10px;
+      margin-bottom: 20px;
+}

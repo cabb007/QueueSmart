@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+body{
+    font-family: 'Inter', sans-serif;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 20px 50px;
+
+    background-color: white;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.logo {
+    color: #2563eb;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+.logoutButton {
+    background: none;
+    border: none;
+    color: #4b5563;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    background-color: #f3f4f6;
+    font-family: 'Inter', sans-serif;
+}
+
+.cardHeader {
+    background-color: #2563eb;
+    color: white;
+
+    padding: 15px;
+
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    font-size: 30px;
+}
+
+.pageDescription {
+    color: whitesmoke;
+    font-size: 14px;
+    margin-bottom: 25px;
+}
+
+.historyCard {
+    background-color: white;
+    width: 900px;
+    min-height: 70vh;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
+}
+
+h2{
+    color: whitesmoke;
+}
+
+
+.historyEntry {
+    background-color: #f8fafc;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 10px;
+
+    padding: 20px;
+
+    margin-bottom: 15px;
+
+    box-shadow: none;
+
+    width: auto;
+}
+
+.historyContent {
+    padding: 25px;
+    padding-bottom: 40px;
+    background-color: white;
+}
+
+.historyFooter {
+    text-align: center;
+    color: #9ca3af;
+    padding: 20px;
+    border-top: 1px solid #e5e7eb;
+    background-color: white;
+    height: 30px;
+}
