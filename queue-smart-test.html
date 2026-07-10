@@ -1,162 +1,125 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QueueSmart - Patient Dashboard</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+import React from 'react';
 
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        royalblue: {
-                            50: '#f0f4ff',
-                            100: '#e1e9ff',
-                            500: '#2563eb',
-                            600: '#1d4ed8',
-                            700: '#1e40af',
-                        }
-                    }
-                },
-            },
-        }
-    </script>
-</head>
-<body class="font-sans bg-slate-50 text-slate-900 min-h-screen">
-
-    <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <span class="text-2xl font-bold tracking-tight text-royalblue-600">QueueSmart</span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="bg-royalblue-50 px-3 py-1.5 rounded-lg border border-royalblue-100 hidden sm:flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-royalblue-500 animate-pulse"></span>
-                        <span class="text-xs font-medium text-royalblue-700">Live Status: 2 people ahead of you</span>
-                    </div>
-                    <button class="text-sm font-medium text-slate-600 hover:text-slate-900">Logout</button>
-                </div>
+const PatientDashboard = () => {
+  return (
+    <div className="font-sans bg-slate-50 text-slate-900 min-h-screen">
+      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <span className="text-2xl font-bold tracking-tight text-royalblue-600">QueueSmart</span>
             </div>
+            <div className="flex items-center gap-4">
+              <div className="bg-royalblue-50 px-3 py-1.5 rounded-lg border border-royalblue-100 hidden sm:flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-royalblue-500 animate-pulse"></span>
+                <span className="text-xs font-medium text-royalblue-700">Live Status: 2 people ahead of you</span>
+              </div>
+              <button className="text-sm font-medium text-slate-600 hover:text-slate-900">Logout</button>
+            </div>
+          </div>
         </div>
-    </nav>
+      </nav>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            <div class="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
-                <div class="flex flex-col items-center text-center pb-6 border-b border-slate-100">
-                    <div class="w-24 h-24 bg-royalblue-100 rounded-full flex items-center justify-center text-royalblue-600 text-3xl font-bold mb-3 shadow-inner">
-                        JD
-                    </div>
-                    <h2 class="text-xl font-bold text-slate-900 tracking-tight">John Doe</h2>
-                    <p class="text-sm text-slate-500">Patient ID: #QS-98421</p>
-                </div>
-
-                <div class="py-6 border-b border-slate-100 space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Date of Birth</label>
-                        <p class="text-sm font-medium text-slate-800">October 14, 1992</p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Age</label>
-                            <p class="text-sm font-medium text-slate-800">33 Years Old</p>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Blood Type</label>
-                            <p class="text-sm font-medium text-slate-800">O Positive (O+)</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="pt-6">
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Emergency Contact</label>
-                    <p class="text-sm font-semibold text-slate-800">Jane Doe <span class="font-normal text-slate-500">(Spouse)</span></p>
-                    <p class="text-xs text-slate-500 mt-0.5">+1 (555) 019-2834</p>
-                </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
+            <div className="flex flex-col items-center text-center pb-6 border-b border-slate-100">
+              <div className="w-24 h-24 bg-royalblue-100 rounded-full flex items-center justify-center text-royalblue-600 text-3xl font-bold mb-3 shadow-inner">
+                JD
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">John Doe</h2>
+              <p className="text-sm text-slate-500">Patient ID: #QS-98421</p>
             </div>
 
-            <div class="lg:col-span-2 space-y-8">
-                
-                <div class="bg-gradient-to-r from-royalblue-600 to-royalblue-700 text-white rounded-2xl p-6 shadow-md shadow-royalblue-100">
-                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                        <div>
-                            <span class="inline-block px-2.5 py-0.5 bg-white/20 text-xs font-medium rounded-full mb-2 backdrop-blur-sm">Active Check-In</span>
-                            <h3 class="text-xl font-bold tracking-tight">Your Queue Position</h3>
-                            <p class="text-white/80 text-xs mt-1">Please remain nearby. You will receive an alert shortly.</p>
-                        </div>
-                        <div class="flex items-baseline gap-2 bg-white/10 px-5 py-3 rounded-xl border border-white/10 self-start sm:self-center">
-                            <span class="text-5xl font-extrabold tracking-tight">3</span>
-                            <span class="text-sm font-medium text-white/70">in line</span>
-                        </div>
-                    </div>
+            <div className="py-6 border-b border-slate-100 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Date of Birth</label>
+                <p className="text-sm font-medium text-slate-800">October 14, 1992</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Age</label>
+                  <p className="text-sm font-medium text-slate-800">33 Years Old</p>
                 </div>
-
-                <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                    <h3 class="text-lg font-bold text-slate-900 mb-4 tracking-tight border-b border-slate-100 pb-2">Current Visit Details</h3>
-                    
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Reason for Visit Today</label>
-                            <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-                                <p class="text-sm text-slate-700 leading-relaxed">Severe cough and congestion lasting over 4 days, mild sore throat, and experiencing alternating fever chills overnight.</p>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Current Active Medications</label>
-                            <div class="flex flex-wrap gap-2 mt-1">
-                                <span class="bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 text-xs font-medium rounded-lg">Amoxicillin (500mg)</span>
-                                <span class="bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 text-xs font-medium rounded-lg">Cetirizine (10mg)</span>
-                            </div>
-                        </div>
-                    </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">Blood Type</label>
+                  <p className="text-sm font-medium text-slate-800">O Positive (O+)</p>
                 </div>
-
-                <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-                    <h3 class="text-lg font-bold text-slate-900 mb-4 tracking-tight border-b border-slate-100 pb-2">Past Medical History</h3>
-                    
-                    <div class="divide-y divide-slate-100">
-                        <div class="py-3 flex justify-between items-center first:pt-0 last:pb-0">
-                            <div>
-                                <h4 class="text-sm font-semibold text-slate-800">Annual Comprehensive Physical</h4>
-                                <p class="text-xs text-slate-500 mt-0.5">Routine health screening and vaccine updates</p>
-                            </div>
-                            <span class="text-xs text-slate-400 font-medium">May 14, 2025</span>
-                        </div>
-
-                        <div class="py-3 flex justify-between items-center first:pt-0 last:pb-0">
-                            <div>
-                                <h4 class="text-sm font-semibold text-slate-800">Acute Bronchitis Treatment</h4>
-                                <p class="text-xs text-slate-500 mt-0.5">Prescribed inhaler course and steroid tablets</p>
-                            </div>
-                            <span class="text-xs text-slate-400 font-medium">Dec 02, 2024</span>
-                        </div>
-
-                        <div class="py-3 flex justify-between items-center first:pt-0 last:pb-0">
-                            <div>
-                                <h4 class="text-sm font-semibold text-slate-800">Allergy Evaluation Consultation</h4>
-                                <p class="text-xs text-slate-500 mt-0.5">Identified mild pollen and dust sensitivity metrics</p>
-                            </div>
-                            <span class="text-xs text-slate-400 font-medium">Aug 19, 2023</span>
-                        </div>
-                    </div>
-                </div>
-
+              </div>
             </div>
+
+            <div className="pt-6">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Emergency Contact</label>
+              <p className="text-sm font-semibold text-slate-800">Jane Doe <span className="font-normal text-slate-500">(Spouse)</span></p>
+              <p className="text-xs text-slate-500 mt-0.5">+1 (555) 019-2834</p>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-gradient-to-r from-royalblue-600 to-royalblue-700 text-white rounded-2xl p-6 shadow-md shadow-royalblue-100">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div>
+                  <span className="inline-block px-2.5 py-0.5 bg-white/20 text-xs font-medium rounded-full mb-2 backdrop-blur-sm">Active Check-In</span>
+                  <h3 className="text-xl font-bold tracking-tight">Your Queue Position</h3>
+                  <p className="text-white/80 text-xs mt-1">Please remain nearby. You will receive an alert shortly.</p>
+                </div>
+                <div className="flex items-baseline gap-2 bg-white/10 px-5 py-3 rounded-xl border border-white/10 self-start sm:self-center">
+                  <span className="text-5xl font-extrabold tracking-tight">3</span>
+                  <span className="text-sm font-medium text-white/70">in line</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+              <h3 className="text-lg font-bold text-slate-900 mb-4 tracking-tight border-b border-slate-100 pb-2">Current Visit Details</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Reason for Visit Today</label>
+                  <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+                    <p className="text-sm text-slate-700 leading-relaxed">Severe cough and congestion lasting over 4 days, mild sore throat, and experiencing alternating fever chills overnight.</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Current Active Medications</label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <span className="bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 text-xs font-medium rounded-lg">Amoxicillin (500mg)</span>
+                    <span className="bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 text-xs font-medium rounded-lg">Cetirizine (10mg)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+              <h3 className="text-lg font-bold text-slate-900 mb-4 tracking-tight border-b border-slate-100 pb-2">Past Medical History</h3>
+              <div className="divide-y divide-slate-100">
+                <div className="py-3 flex justify-between items-center first:pt-0 last:pb-0">
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-800">Annual Comprehensive Physical</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Routine health screening & vaccine updates</p>
+                  </div>
+                  <span className="text-xs text-slate-400 font-medium">May 14, 2025</span>
+                </div>
+                <div className="py-3 flex justify-between items-center first:pt-0 last:pb-0">
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-800">Acute Bronchitis Treatment</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Prescribed inhaler course and steroid tablets</p>
+                  </div>
+                  <span className="text-xs text-slate-400 font-medium">Dec 02, 2024</span>
+                </div>
+                <div className="py-3 flex justify-between items-center first:pt-0 last:pb-0">
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-800">Allergy Evaluation Consultation</h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Identified mild pollen and dust sensitivity metrics</p>
+                  </div>
+                  <span className="text-xs text-slate-400 font-medium">Aug 19, 2023</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-    </main>
+      </main>
+    </div>
+  );
+};
 
-</body>
-</html>
+export default PatientDashboard;
