@@ -27,13 +27,14 @@ function JoinQueue(){
             <p className="pageDescription">
               Check in for your clinic visit and view estimated wait times.
             </p>
+            <p className = "pageDescription">Fields with this symbol are required *</p>
 
 
           </div>
 
           <div className="card-content">
 
-            <label>Select Service</label>
+            <label>Select Service *</label>
 
             <p className="subText">
               If your desired service is not listed, please select "Other".
