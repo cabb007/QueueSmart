@@ -3,6 +3,7 @@ import Login             from './pages/auth/Login'
 import Register          from './pages/auth/Register'
 import ServiceManagement from './pages/admin/ServiceManagement'
 import QueueManagement   from './pages/admin/QueueManagement'
+import QueueStatus       from './QueueStatus'
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -65,6 +66,7 @@ export default function App() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/services" element={<AdminLayout><ServiceManagement /></AdminLayout>} />
       <Route path="/queue"    element={<AdminLayout><QueueManagement /></AdminLayout>} />
+      <Route path="/queuestatus" element={<QueueStatus />} /> 
     </Routes>
   )
 }
