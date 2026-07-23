@@ -1,18 +1,68 @@
 import React from 'react';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {useNavigate} from 'react-router-dom';
 
 export default function QueueStatus() {
-  const queuePosition = 3;
-  const estimatedWaitTime = "18 minutes";
-  const status = "waiting"; 
-  // options: "waiting", "almost ready", "served"
+  const navigate = useNavigate();
+
+  const [queuePosition, setQueuePosition] = useState(null);
+  const [estimatedWaitTime, setEstimatedWaitTime] =  useState("");
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const statusStyles = {
     waiting: "bg-yellow-50 text-yellow-700 border-yellow-200",
     "almost ready": "bg-blue-50 text-blue-700 border-blue-200",
     served: "bg-green-50 text-green-700 border-green-200",
   };
+
+  useEffect(() => {
+    async function getQueueStatus() {
+      try {
+        const response = await fetch(
+          "http://localhost:5000/queuestatus"
+        );
+
+        if(!response.ok){
+          throw new Error("Unable to retrieve queue status");
+        }
+
+        const data = await response.json();
+
+        setQueuePosition(data.queuePosition);
+        setEstimatedWaitTime(data.estimatedWaitTime);
+        setStatus(data.status);
+      } catch (error) {
+        console.error(error);
+        setError(error.message);
+      } finally {
+        setLoading (false);
+      }
+    }
+
+    getQueueStatus();
+  }, []);
+
+  function handleLogout() {
+    navigate("/");
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading queue status...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="font-sans bg-slate-50 text-slate-900 min-h-screen">
