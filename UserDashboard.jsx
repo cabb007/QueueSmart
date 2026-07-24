@@ -1,6 +1,6 @@
 import React from 'react';
 
-const PatientDashboard = () => {
+const UserDashboard = () => {
   return (
     <div className="font-sans bg-slate-50 text-slate-900 min-h-screen">
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
@@ -122,6 +122,5 @@ const PatientDashboard = () => {
   );
 };
 
-export default PatientDashboard;
-
+export default UserDashboard;
 
