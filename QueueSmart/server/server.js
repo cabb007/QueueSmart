@@ -36,7 +36,7 @@ let queue = [
     userId: sarahUser.id, 
     name: sarahUser.name,  
     joinedAt: new Date().toISOString(), 
-    position: 1, 
+    position: 3, 
     status: 'waiting',
     vitals : {
       bodyTemp: 98.6,
@@ -57,7 +57,7 @@ let queue = [
     userId: 'u4', 
     name: 'Linda Pham',   
     joinedAt: new Date().toISOString(), 
-    position: 3, 
+    position: 1, 
     status: 'waiting' },
 ]
 
@@ -157,6 +157,25 @@ function checkCloseToFront(entry,service) {
 
   return null
 }
+
+//notification routing
+
+//notification retrieval
+app.get('/api/notifications/:userId', (req,res) => {
+  const userNotifications = notifications.filter(
+      notification => notification.userId === req.params.userId
+    ).sort(
+      (a,b)=>
+        new Date(b.createdAt) - new Date(a.createdAt)
+    )
+
+  return res.status(200).json({
+    notifications: userNotifications,
+  })
+})
+
+
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // AUTH ROUTES
@@ -337,6 +356,8 @@ app.post('/api/queue/:serviceId/join', (req, res) => {
   if (alreadyIn) return res.status(409).json({ message: 'You are already in this queue.' })
 
   const position = queue.filter(queueEntry => queueEntry.serviceId === req.params.serviceId).length + 1
+
+  const vitals = req.body.vitals || {}
 
   //define entry
   const entry = {
