@@ -1,7 +1,7 @@
 const express = require('express')
 const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
-const { calculateWaitTime } = require('./waitTimeCalculator')
+const { calculateWaitTime, assessSeverity } = require('./waitTimeCalculator')
 
 const app  = express()
 const PORT = 3001
@@ -30,8 +30,6 @@ let queue = [
   { id: 'q2', serviceId: 's1', userId: 'u3', name: 'James Okonkwo',joinedAt: new Date().toISOString(), position: 2, status: 'waiting' },
   { id: 'q3', serviceId: 's1', userId: 'u4', name: 'Linda Pham',   joinedAt: new Date().toISOString(), position: 3, status: 'waiting' },
 ]
-
-const queue = [];
 
 const history = [];
 
@@ -101,19 +99,11 @@ function createNotification(userId,serviceId,type,message,waitTimeData = null){
   return notification
 }
 
-const joinedNotification = createNotification(
-  entry.userId,
-  entry.serviceId,
-  'queue_joined',
-  `You joined the ${svc.name} queue at position ${entry.position}. Your estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`,
-  waitTimeData
-)
-
 function checkCloseToFront(entry,service) {
   const waitTimeData = calculateWaitTime(
     entry.position,
     service.duration,
-    entry.vitals
+    entry.vitals || {}
   )
 
   const isClose = entry.position <=2 || waitTimeData.estimatedWaitMinutes <= 15
@@ -292,7 +282,7 @@ app.patch('/api/services/:id/toggle', (req, res) => {
 
 // GET /api/queue/:serviceId
 app.get('/api/queue/:serviceId', (req, res) => {
-  const svc = services.find(s => s.id === req.params.serviceId)
+  const svc = services.find(service => service.id === req.params.serviceId)
   if (!svc) return res.status(404).json({ message: 'Service not found.' })
 
   const serviceQueue = queue
@@ -306,15 +296,19 @@ app.get('/api/queue/:serviceId', (req, res) => {
 // POST /api/queue/:serviceId/join
 app.post('/api/queue/:serviceId/join', (req, res) => {
   const svc = services.find(s => s.id === req.params.serviceId)
+
   if (!svc)                    return res.status(404).json({ message: 'Service not found.' })
   if (svc.status === 'closed') return res.status(400).json({ message: 'This service is currently closed.' })
+
   if (!req.body.userId || !req.body.name)
     return res.status(400).json({ message: 'userId and name are required.' })
 
   const alreadyIn = queue.find(e => e.serviceId === req.params.serviceId && e.userId === req.body.userId)
   if (alreadyIn) return res.status(409).json({ message: 'You are already in this queue.' })
 
-  const position = queue.filter(e => e.serviceId === req.params.serviceId).length + 1
+  const position = queue.filter(queueEntry => queueEntry.serviceId === req.params.serviceId).length + 1
+
+  //define entry
   const entry = {
     id:        uuidv4(),
     serviceId: req.params.serviceId,
@@ -326,12 +320,32 @@ app.post('/api/queue/:serviceId/join', (req, res) => {
     vitals,
     closeNotificationSent: false,
   }
-  queue.push(entry)
 
-  res.status(201).json({
+  //add to queue
+  queue.push(entry)
+  //calculate wait time
+  const waitTimeData = calculateWaitTime(
+    entry.position,
+    svc.duration,
+    entry.vitals
+  )
+
+  const joinedNotification = createNotification(
+  entry.userId,
+  entry.serviceId,
+  'queue_joined',
+  `You joined the ${svc.name} queue at position ${entry.position}. Your estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`,
+  waitTimeData
+  )
+
+  return res.status(201).json({
     message:              'Joined queue successfully.',
     entry,
-    estimatedWaitMinutes: position * svc.duration,
+    estimatedWaitMinutes:
+      waitTimeData.estimatedWaitMinutes,
+    severityCategory:
+      waitTimeData.severityCategory,
+    notifications: [joinedNotification],
   })
 })
 
