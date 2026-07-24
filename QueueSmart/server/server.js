@@ -45,16 +45,20 @@ app.post("/leaveQueue", (req,res)=> {
 app.post("/joinQueue", (req,res) =>{
 
 
+    // Ensuring we have strings before calling string methods like trim() or length. unit test adjustment
+    if(typeof req.body.name !== "string" || typeof req.body.service !== "string"){
+        return res.status(400).json({message: "Not a valid name or service"});
+    }
+
     if(!req.body.name || !req.body.service || req.body.name.trim() === ""){
         return res.status(400).json({message: "Missing or invalid inputs please try again"}); //res.status(400) means the client sent a bad request
     }
-    if(typeof req.body.name !== "string" || typeof req.body.service !== "string"){ //checking for good name and service inputs
-        return res.status(400).json({message: "Not a valid name or service"});
+
+    if(req.body.name.length > 50){ //max character limit of 50
+        return res.status(400).json({message: "Max character limit of 50"});
     }
-    if(req.body.name.length > 50){ //max charcter limit of 50
-        return res.status(400).json({mesasge: "Max character limit of 50"});
-    }
-    if(!validFields.includes(req.body.service)){
+
+    if(!validFields.includes(req.body.service)){ //checking for a valid service option
         return res.status(400).json({message: "Not a valid service"});
     }
 
@@ -101,20 +105,28 @@ app.post("/joinQueue", (req,res) =>{
         id: patient.id
     });
 
-    console.log(queue)
+    //console.log(queue)
 
 
-});
-
-app.get("/queue", (req,res) => {
-    res.json(queue);
-    
 });
 
 app.get("/history", (req,res) => {
     res.json(history);
 });
 
-app.listen(3000,()=> { //start waiting for requests on port 3000
-    console.log("Listening on port 3000");
-});
+if(require.main === module){
+    app.listen(3000,()=> { //start waiting for requests on port 3000
+        console.log("Listening on port 3000");
+    });
+}
+
+
+
+
+function resetData() { 
+    queue.length = 0;
+    history.length = 0;
+    patientID = 0;
+}
+
+module.exports = {app, resetData};
