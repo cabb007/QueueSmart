@@ -4,10 +4,10 @@ import { useState } from 'react'
 function getStrength(pw) {
   if (!pw) return 0
   let s = 0
-  if (pw.length >= 8)           s++
-  if (/[A-Z]/.test(pw))         s++
-  if (/[0-9]/.test(pw))         s++
-  if (/[^A-Za-z0-9]/.test(pw))  s++
+  if (pw.length >= 8) s++
+  if (/[A-Z]/.test(pw)) s++
+  if (/[0-9]/.test(pw)) s++
+  if (/[^A-Za-z0-9]/.test(pw)) s++
   return s
 }
 const STRENGTH_LABEL = ['', 'Weak', 'Fair', 'Good', 'Strong']
@@ -55,24 +55,25 @@ function validate(values) {
 }
 
 /* ── Reusable field ── */
-function Field({ id, label, type, placeholder, value, onChange, error, children, autoComplete }) {
+function Field({ id, label, icon, type, placeholder, value, onChange, error, children, autoComplete }) {
   return (
     <div className="mb-4">
       <label htmlFor={id} className="block text-sm font-semibold text-gray-700 mb-1.5">
         {label} <span className="text-red-500">*</span>
       </label>
       <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">{icon}</span>
         <input
           id={id} type={type} placeholder={placeholder} value={value}
           onChange={onChange} autoComplete={autoComplete}
-          className={`w-full px-4 pr-10 py-2.5 rounded-lg text-sm border bg-gray-50
+          className={`w-full pl-9 pr-10 py-2.5 rounded-lg text-sm border bg-gray-50
                       text-gray-800 outline-none transition-all duration-150
                       focus:bg-white focus:border-[#2B4ACB] focus:ring-2 focus:ring-[#2B4ACB]/10
                       ${error ? 'border-red-500 bg-white' : 'border-gray-300'}`}
         />
         {children}
       </div>
-      {error && <p className="mt-1.5 text-xs text-red-500 font-medium">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-red-500 font-medium">⚠ {error}</p>}
     </div>
   )
 }
@@ -86,18 +87,20 @@ function BrandPanel({ headline, sub, features }) {
       <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-white/5" />
       <div className="absolute -bottom-16 -left-16 w-64 h-64 rounded-full bg-white/[0.04]" />
       <div className="relative z-10 flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center font-bold text-white text-lg">Q</div>
+        <div className="w-11 h-11 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center text-2xl">🏥</div>
         <span className="text-white text-xl font-extrabold tracking-tight">QueueSmart</span>
       </div>
       <div className="relative z-10">
         <h2 className="text-white text-4xl font-extrabold leading-tight tracking-tight mb-4"
-            dangerouslySetInnerHTML={{ __html: headline }} />
+          dangerouslySetInnerHTML={{ __html: headline }} />
         <p className="text-white/70 text-[15px] leading-relaxed max-w-sm">{sub}</p>
       </div>
       <ul className="relative z-10 flex flex-col gap-3">
         {features.map((f, i) => (
           <li key={i} className="flex items-center gap-3 text-white/80 text-sm font-medium">
-            <span className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">—</span>
+            <span className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-[15px] shrink-0">
+              {f.icon}
+            </span>
             {f.text}
           </li>
         ))}
@@ -110,10 +113,9 @@ function BrandPanel({ headline, sub, features }) {
 function ToggleBtn({ show, onToggle }) {
   return (
     <button type="button" onClick={onToggle}
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600
-                 transition-colors text-sm font-medium"
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors text-base"
       aria-label={show ? 'Hide' : 'Show'}>
-      {show ? 'Hide' : 'Show'}
+      {show ? '🙈' : '👁️'}
     </button>
   )
 }
@@ -122,12 +124,12 @@ function ToggleBtn({ show, onToggle }) {
    REGISTER PAGE
 ══════════════════════════════════════════════ */
 export default function Register({ onGoLogin }) {
-  const [values,   setValues]   = useState({ name: '', email: '', password: '', confirm: '', role: 'patient' })
-  const [errors,   setErrors]   = useState({})
+  const [values, setValues] = useState({ name: '', email: '', password: '', confirm: '', role: 'patient' })
+  const [errors, setErrors] = useState({})
   const [showPass, setShowPass] = useState(false)
   const [showConf, setShowConf] = useState(false)
-  const [done,     setDone]     = useState(false)
-  const [loading,  setLoading]  = useState(false)
+  const [done, setDone] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   function set(field, val) {
     setValues(v => ({ ...v, [field]: val }))
@@ -141,14 +143,14 @@ export default function Register({ onGoLogin }) {
 
     setLoading(true)
     try {
-      const res  = await fetch('http://localhost:3001/api/auth/register', {
-        method:  'POST',
+      const res = await fetch('http://localhost:3001/api/auth/register', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          name:     values.name,
-          email:    values.email,
+        body: JSON.stringify({
+          name: values.name,
+          email: values.email,
           password: values.password,
-          role:     'patient',
+          role: values.role,
         }),
       })
       const data = await res.json()
@@ -180,16 +182,14 @@ export default function Register({ onGoLogin }) {
         headline="You're almost <span class='text-white/50'>in.</span>"
         sub="One quick step — verify your email and you're ready to join queues instantly."
         features={[
-          { text: 'Account created successfully' },
-          { text: 'Verification email on its way' },
-          { text: 'Sign in once verified'         },
+          { icon: '✓', text: 'Account created successfully' },
+          { icon: '✓', text: 'Verification email on its way' },
+          { icon: '✓', text: 'Sign in once verified' },
         ]}
       />
       <div className="flex items-center justify-center px-6 py-10 bg-white">
         <div className="w-full max-w-[400px] text-center">
-          <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-5">
-            <span className="text-green-600 text-3xl font-bold">✓</span>
-          </div>
+          <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center text-4xl mx-auto mb-5">✅</div>
           <h2 className="text-[#0D1B4B] text-2xl font-extrabold mb-3">Account Created!</h2>
           <p className="text-gray-500 text-sm leading-relaxed mb-6">
             A verification link has been sent to{' '}
@@ -213,9 +213,9 @@ export default function Register({ onGoLogin }) {
         headline="Your health,<br/><span class='text-white/50'>your queue.</span>"
         sub="Create your account and take control of your clinic visits. No more guessing — see your position in real time."
         features={[
-          { text: 'Real-time queue position' },
-          { text: 'Alerts before your turn'  },
-          { text: 'Full visit history'        },
+          { icon: '✓', text: 'Real-time queue position' },
+          { icon: '✓', text: 'Alerts before your turn' },
+          { icon: '✓', text: 'Full visit history' },
         ]}
       />
 
@@ -223,7 +223,7 @@ export default function Register({ onGoLogin }) {
         <div className="w-full max-w-[400px]">
 
           <div className="flex md:hidden items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-[#2B4ACB] flex items-center justify-center font-bold text-white">Q</div>
+            <div className="w-10 h-10 rounded-xl bg-[#2B4ACB] flex items-center justify-center text-xl">🏥</div>
             <span className="text-[#0D1B4B] text-xl font-extrabold">QueueSmart</span>
           </div>
 
@@ -234,19 +234,25 @@ export default function Register({ onGoLogin }) {
 
           <form onSubmit={handleSubmit} noValidate>
 
-            <Field
-              id="reg-name" label="Full name" type="text"
-              placeholder="Jane Smith" autoComplete="name"
-              value={values.name} onChange={e => set('name', e.target.value)}
-              error={errors.name}
-            />
+            {/* {/* Role
+            <div className="mb-4">
+              <label htmlFor="reg-role" className="block text-sm font-semibold text-gray-700 mb-1.5">I am a</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">👤</span>
+                <select id="reg-role" value={values.role} onChange={e => set('role', e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm border border-gray-300 bg-gray-50
+                             text-gray-800 outline-none appearance-none cursor-pointer
+                             focus:bg-white focus:border-[#2B4ACB] focus:ring-2 focus:ring-[#2B4ACB]/10
+                             transition-all duration-150">
+                  <option value="patient">Patient</option>
+                  <option value="nurse">Nurse / Staff</option>
+                </select>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">▼</span>
+              </div>
+            </div> */}
 
-            <Field
-              id="reg-email" label="Email address" type="email"
-              placeholder="you@example.com" autoComplete="email"
-              value={values.email} onChange={e => set('email', e.target.value)}
-              error={errors.email}
-            />
+            <Field id="reg-name" label="Full name" icon="🪪" type="text" placeholder="Jane Smith" autoComplete="name" value={values.name} onChange={e => set('name', e.target.value)} error={errors.name} />
+            <Field id="reg-email" label="Email address" icon="✉️" type="email" placeholder="you@example.com" autoComplete="email" value={values.email} onChange={e => set('email', e.target.value)} error={errors.email} />
 
             {/* Password */}
             <div className="mb-4">
@@ -254,17 +260,17 @@ export default function Register({ onGoLogin }) {
                 Password <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <input id="reg-password" type={showPass ? 'text' : 'password'}
-                  placeholder="Min. 8 characters" autoComplete="new-password"
-                  value={values.password} onChange={e => set('password', e.target.value)}
-                  className={`w-full px-4 pr-16 py-2.5 rounded-lg text-sm border bg-gray-50 text-gray-800
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">🔒</span>
+                <input id="reg-password" type={showPass ? 'text' : 'password'} placeholder="Min. 8 characters"
+                  autoComplete="new-password" value={values.password} onChange={e => set('password', e.target.value)}
+                  className={`w-full pl-9 pr-10 py-2.5 rounded-lg text-sm border bg-gray-50 text-gray-800
                               outline-none transition-all duration-150 focus:bg-white focus:border-[#2B4ACB]
                               focus:ring-2 focus:ring-[#2B4ACB]/10
                               ${errors.password ? 'border-red-500 bg-white' : 'border-gray-300'}`} />
                 <ToggleBtn show={showPass} onToggle={() => setShowPass(s => !s)} />
               </div>
               <StrengthBar password={values.password} />
-              {errors.password && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.password}</p>}
+              {errors.password && <p className="mt-1.5 text-xs text-red-500 font-medium">⚠ {errors.password}</p>}
             </div>
 
             {/* Confirm password */}
@@ -273,16 +279,16 @@ export default function Register({ onGoLogin }) {
                 Confirm password <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <input id="reg-confirm" type={showConf ? 'text' : 'password'}
-                  placeholder="Re-enter your password" autoComplete="new-password"
-                  value={values.confirm} onChange={e => set('confirm', e.target.value)}
-                  className={`w-full px-4 pr-16 py-2.5 rounded-lg text-sm border bg-gray-50 text-gray-800
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">🔒</span>
+                <input id="reg-confirm" type={showConf ? 'text' : 'password'} placeholder="Re-enter your password"
+                  autoComplete="new-password" value={values.confirm} onChange={e => set('confirm', e.target.value)}
+                  className={`w-full pl-9 pr-10 py-2.5 rounded-lg text-sm border bg-gray-50 text-gray-800
                               outline-none transition-all duration-150 focus:bg-white focus:border-[#2B4ACB]
                               focus:ring-2 focus:ring-[#2B4ACB]/10
                               ${errors.confirm ? 'border-red-500 bg-white' : 'border-gray-300'}`} />
                 <ToggleBtn show={showConf} onToggle={() => setShowConf(s => !s)} />
               </div>
-              {errors.confirm && <p className="mt-1.5 text-xs text-red-500 font-medium">{errors.confirm}</p>}
+              {errors.confirm && <p className="mt-1.5 text-xs text-red-500 font-medium">⚠ {errors.confirm}</p>}
             </div>
 
             <button type="submit" disabled={loading}
@@ -290,7 +296,7 @@ export default function Register({ onGoLogin }) {
                          disabled:opacity-60 disabled:cursor-not-allowed
                          text-white text-[15px] font-bold tracking-wide transition-all duration-150
                          shadow-lg shadow-[#2B4ACB]/30">
-              {loading ? 'Creating account...' : 'Create Account'}
+              {loading ? 'Creating account...' : 'Create Account →'}
             </button>
 
             <p className="text-center text-xs text-gray-400 mt-3 leading-relaxed">

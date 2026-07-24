@@ -104,8 +104,8 @@ export default function QueueManagement() {
 
           {/* ── Blue header banner ── */}
           <div className="bg-[#2B4ACB] px-8 py-6">
-            <h1 className="text-white text-2xl font-bold">Queue Management</h1>
-            <p className="text-white/75 text-sm mt-1">Monitor and manage the live patient queue.</p>
+            <h1 className="!text-white text-2xl font-bold">Queue Management</h1>
+            <p className="!text-white/75 text-sm mt-1">Monitor and manage the live patient queue.</p>
           </div>
 
           <div className="px-8 py-6">

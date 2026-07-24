@@ -14,10 +14,10 @@ function validate(values) {
 }
 
 export default function Login({ onLogin, onGoRegister }) {
-  const [values,   setValues]   = useState({ email: '', password: '' })
-  const [errors,   setErrors]   = useState({})
+  const [values, setValues] = useState({ email: '', password: '' })
+  const [errors, setErrors] = useState({})
   const [showPass, setShowPass] = useState(false)
-  const [loading,  setLoading]  = useState(false)
+  const [loading, setLoading] = useState(false)
 
   function set(field, val) {
     setValues(v => ({ ...v, [field]: val }))
@@ -31,10 +31,10 @@ export default function Login({ onLogin, onGoRegister }) {
 
     setLoading(true)
     try {
-      const res  = await fetch('http://localhost:3001/api/auth/login', {
-        method:  'POST',
+      const res = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email: values.email, password: values.password }),
+        body: JSON.stringify({ email: values.email, password: values.password }),
       })
       const data = await res.json()
 
@@ -44,7 +44,7 @@ export default function Login({ onLogin, onGoRegister }) {
       }
 
       localStorage.setItem('token', data.token)
-      localStorage.setItem('user',  JSON.stringify(data.user))
+      localStorage.setItem('user', JSON.stringify(data.user))
 
       onLogin(data.user.role)
 
@@ -85,13 +85,14 @@ export default function Login({ onLogin, onGoRegister }) {
 
         <ul className="relative z-10 flex flex-col gap-3">
           {[
-            { text: 'Live queue position and wait time' },
-            { text: 'Notifications before your turn'    },
-            { text: 'Admin tools for clinic staff'      },
+            { icon: '✓', text: 'Live queue position and wait time' },
+            { icon: '✓', text: 'Notifications before your turn' },
+            { icon: '✓', text: 'Admin tools for clinic staff' },
           ].map((f, i) => (
             <li key={i} className="flex items-center gap-3 text-white/80 text-sm font-medium">
-              <span className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                —
+              <span className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center
+                     text-white font-bold shrink-0">
+                {f.icon}
               </span>
               {f.text}
             </li>

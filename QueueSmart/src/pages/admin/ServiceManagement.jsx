@@ -118,8 +118,8 @@ export default function ServiceManagement() {
 
           {/* Blue header banner */}
           <div className="bg-[#2B4ACB] px-8 py-6">
-            <h1 className="text-white text-2xl font-bold">Service Management</h1>
-            <p className="text-white/75 text-sm mt-1">Create, edit, and manage clinic services.</p>
+            <h1 className="!text-white text-2xl font-bold">Service Management</h1>
+            <p className="!text-white/75 text-sm mt-1">Create, edit, and manage clinic services.</p>
           </div>
 
           <div className="px-8 py-6">
