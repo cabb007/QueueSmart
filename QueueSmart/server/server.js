@@ -158,6 +158,51 @@ function checkCloseToFront(entry,service) {
   return null
 }
 
+//create a notification based on queue updates
+function updateQueueEntryStatus(entry, service) {
+  const waitTimeData = calculateWaitTime(
+    entry.position,
+    service.duration,
+    entry.vitals || {}
+  )
+
+  const previousStatus = entry.status
+
+  let newStatus = 'waiting'
+
+  if (
+    entry.position <= 2 ||
+    waitTimeData.estimatedWaitMinutes <= 15
+  ) {
+    newStatus = 'almost_ready'
+  }
+
+  entry.status = newStatus
+
+  let notification = null
+
+  // Only create a notification when the status actually changes.
+  if (
+    previousStatus === 'waiting' &&
+    newStatus === 'almost_ready'
+  ) {
+    notification = createNotification(
+      entry.userId,
+      entry.serviceId,
+      'almost_ready',
+      `You are almost ready for ${service.name}. ` +
+        `Your current position is ${entry.position}, and your ` +
+        `estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`,
+      waitTimeData
+    )
+  }
+
+  return {
+    notification,
+    waitTimeData,
+  }
+}
+
 //notification routing
 
 //notification retrieval
