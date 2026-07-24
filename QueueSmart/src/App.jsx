@@ -7,6 +7,7 @@ import QueueStatus       from './QueueStatus'
 import Landing           from './Landing'
 import JoinQueue         from './joinQueue'
 import QueueHistory      from './QueueHistory'
+import PatientDashboard  from './PatientDashboard'
 
 /* ── Admin nav layout ── */
 function AdminLayout({ children }) {
@@ -142,7 +143,7 @@ export default function App() {
       <Route path="/register" element={<RegisterPage />} />
 
       {/* Patient routes */}
-      <Route path="/dashboard"   element={<PatientLayout><Landing /></PatientLayout>} />
+      <Route path="/dashboard"   element={<PatientLayout><PatientDashboard /></PatientLayout>} />
       <Route path="/join"        element={<PatientLayout><JoinQueue /></PatientLayout>} />
       <Route path="/queuestatus" element={<PatientLayout><QueueStatus /></PatientLayout>} />
       <Route path="/history"     element={<PatientLayout><QueueHistory /></PatientLayout>} />

@@ -1,7 +1,7 @@
 const express = require('express')
 const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
-const { calculateWaitTime } = require('./waitTimeCaclulator')
+const { calculateWaitTime } = require('./waitTimeCalculator')
 
 const app  = express()
 const PORT = 3001
@@ -66,7 +66,7 @@ function validateFields(rules, body) {
 // Notications Handling-----------------------------------------------------------
 function createNotification(userId,serviceId,type,message,waitTimeData = null){
   const notification = {
-    id: uuidv4(),
+    id: 1,
     userId,
     serviceId,
     type,

@@ -3,23 +3,6 @@ import React from 'react';
 const PatientDashboard = () => {
   return (
     <div className="font-sans bg-slate-50 text-slate-900 min-h-screen">
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <span className="text-2xl font-bold tracking-tight text-royalblue-600">QueueSmart</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="bg-royalblue-50 px-3 py-1.5 rounded-lg border border-royalblue-100 hidden sm:flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-royalblue-500 animate-pulse"></span>
-                <span className="text-xs font-medium text-royalblue-700">Live Status: 2 people ahead of you</span>
-              </div>
-              <button className="text-sm font-medium text-slate-600 hover:text-slate-900">Logout</button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 overflow-hidden">
