@@ -147,6 +147,9 @@ export default function App() {
       <Route path="/join"        element={<PatientLayout><JoinQueue /></PatientLayout>} />
       <Route path="/queuestatus" element={<PatientLayout><QueueStatus /></PatientLayout>} />
       <Route path="/history"     element={<PatientLayout><QueueHistory /></PatientLayout>} />
+      <Route path="/queuestatus" element={<PatientLayout><QueueStatus /></PatientLayout>} /> 
+      <Route path="/joinqueue" element={<PatientLayout><JoinQueue /></PatientLayout>} />
+      <Route path="/queuehistory" element={<PatientLayout><QueueHistory /></PatientLayout>} />
 
       {/* Admin routes */}
       <Route path="/services" element={<AdminLayout><ServiceManagement /></AdminLayout>} />

@@ -31,7 +31,20 @@ let queue = [
   { id: 'q3', serviceId: 's1', userId: 'u4', name: 'Linda Pham',   joinedAt: new Date().toISOString(), position: 3, status: 'waiting' },
 ]
 
-const history = []
+const queue = [];
+
+const history = [];
+
+const validFields = [
+    "Primary Care",
+    "Pediatrics",
+    "Urgent Care",
+    "Lab Work",
+    "Other"
+
+]
+
+let patientID = 0;
 const notifications = []
 
 const queueStatus = {
@@ -87,6 +100,14 @@ function createNotification(userId,serviceId,type,message,waitTimeData = null){
 
   return notification
 }
+
+const joinedNotification = createNotification(
+  entry.userId,
+  entry.serviceId,
+  'queue_joined',
+  `You joined the ${svc.name} queue at position ${entry.position}. Your estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`,
+  waitTimeData
+)
 
 function checkCloseToFront(entry,service) {
   const waitTimeData = calculateWaitTime(
@@ -379,6 +400,102 @@ app.get('/api/history/:userId', (req, res) => {
     .sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
   res.status(200).json({ history: userHistory })
 })
+
+// QUEUE JOIN ROUTES/FUNCTIONS
+app.post("/QueueHistory", (req,res)=> {
+
+})
+
+app.post("/leaveQueue", (req,res)=> {
+    if(queue.length ===0){
+        return res.status(400).json({message: "There are no patients in the queue"});
+    }
+    let location = queue.findIndex(patient => patient.id === req.body.id);
+    
+    if(location === -1){
+        return res.status(404).json({message: "ID could not be located in the Queue. Removal failed"})
+    }
+
+
+    history.push(queue[location]);
+    queue.splice(location,1);
+    res.json({message: "Successfully removed from queue"});
+
+    console.log(queue)
+});
+
+app.post("/joinQueue", (req,res) =>{
+
+
+    if(!req.body.name || !req.body.service || req.body.name.trim() === ""){
+        return res.status(400).json({message: "Missing or invalid inputs please try again"}); //res.status(400) means the client sent a bad request
+    }
+    if(typeof req.body.name !== "string" || typeof req.body.service !== "string"){ //checking for good name and service inputs
+        return res.status(400).json({message: "Not a valid name or service"});
+    }
+    if(req.body.name.length > 50){ //max charcter limit of 50
+        return res.status(400).json({mesasge: "Max character limit of 50"});
+    }
+    if(!validFields.includes(req.body.service)){
+        return res.status(400).json({message: "Not a valid service"});
+    }
+
+
+    const patient = { //patient object
+        id: patientID++,
+        name: req.body.name,
+        service: req.body.service,
+        status: "waiting"
+    }
+
+
+    queue.push(patient); //switched over so instead of pushing req.body im pushing the patient part
+
+    let position = queue.length;
+    let estTime = 0;
+    switch (patient.service) { //beta estimated time calculation
+        case "Primary Care":
+            estTime = position + 4;
+            break;
+
+        case "Pediatrics":
+            estTime = position + 6;
+            break;
+
+        case "Urgent Care":
+            estTime = position + 7;
+            break;
+
+        case "Lab Work":
+            estTime = position + 10;
+            break;
+
+        case "Other":
+            estTime = position + 8;
+            break;
+        }
+
+
+    res.json({ //sending confirmation message and pos, estimated time and id
+        message: "You have been added to the Queue!",
+        position: position,
+        estTime: estTime,
+        id: patient.id
+    });
+
+    console.log(queue)
+
+
+});
+
+app.get("/queue", (req,res) => {
+    res.json(queue);
+    
+});
+
+app.get("/history", (req,res) => {
+    res.json(history);
+});
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {

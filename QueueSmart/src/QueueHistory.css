@@ -59,11 +59,10 @@ body{
 
 .historyCard {
     background-color: white;
-    width: 900px;
-    min-height: 70vh;
+    width: 650px;
+    padding: 30px;
     border-radius: 15px;
-    overflow: hidden;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.40);
 }
 
 h2{
@@ -72,32 +71,43 @@ h2{
 
 
 .historyEntry {
-    background-color: #f8fafc;
-
-    border: 1px solid #e5e7eb;
-
-    border-radius: 10px;
-
-    padding: 20px;
-
-    margin-bottom: 15px;
-
-    box-shadow: none;
-
-    width: auto;
+    padding:20px;
+    border-radius:12px;
+    border:1px solid #e5e5e5;
+    transition:.2s;
+    box-shadow: #555;
+    font-size: 14px;
 }
 
 .historyContent {
-    padding: 25px;
-    padding-bottom: 40px;
-    background-color: white;
+    padding:30px;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
 }
 
 .historyFooter {
-    text-align: center;
-    color: #9ca3af;
-    padding: 20px;
-    border-top: 1px solid #e5e7eb;
-    background-color: white;
-    height: 30px;
+    text-align:center;
+    color:#8c8c8c;
+    padding:20px;
+    border-top:1px solid #ececec;
+    font-size:15px;
+}
+
+
+.navLinks{
+    display:flex;
+    gap:32px;
+    align-items:center;
+}
+
+.navLink{
+    text-decoration:none;
+    color:#555;
+    font-weight:600;
+    transition:0.2s;
+}
+
+.navLink:hover{
+    color:#2B4ACB;
 }
