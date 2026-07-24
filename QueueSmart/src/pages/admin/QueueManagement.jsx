@@ -1,41 +1,42 @@
-import { useState } from 'react'
-
-const SERVICES = [
-  { id: 1, name: 'General Check-Up',        duration: 15 },
-  { id: 2, name: 'Blood Draw / Lab Work',   duration: 10 },
-  { id: 3, name: 'Specialist Consultation', duration: 30 },
-  { id: 5, name: 'Urgent Care',             duration: 20 },
-]
-
-const INITIAL_QUEUE = [
-  { pos: 1, id: 'Q-001', name: 'Maria Santos',  joined: '9:02 AM', status: 'ready'   },
-  { pos: 2, id: 'Q-002', name: 'James Okonkwo', joined: '9:10 AM', status: 'waiting' },
-  { pos: 3, id: 'Q-003', name: 'Linda Pham',    joined: '9:18 AM', status: 'waiting' },
-  { pos: 4, id: 'Q-004', name: 'Carlos Rivera', joined: '9:25 AM', status: 'waiting' },
-  { pos: 5, id: 'Q-005', name: 'Emily Zhao',    joined: '9:31 AM', status: 'waiting' },
-]
+import { useState, useEffect } from 'react'
 
 export default function QueueManagement() {
-  const [selectedSvc, setSelectedSvc] = useState(1)
-  const [queue,       setQueue]       = useState(INITIAL_QUEUE)
+  const [services,    setServices]    = useState([])
+  const [selectedSvc, setSelectedSvc] = useState(null)
+  const [queue,       setQueue]       = useState([])
   const [served,      setServed]      = useState([])
   const [removeId,    setRemoveId]    = useState(null)
+  const [loading,     setLoading]     = useState(true)
 
-  const svc = SERVICES.find(s => s.id === selectedSvc)
+  const svc = services.find(s => s.id === selectedSvc)
 
-  function serveNext() {
-    if (!queue.length) return
-    const next = queue[0]
-    setServed(prev => [{
-      ...next,
-      servedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }, ...prev])
-    setQueue(prev => prev.slice(1).map((p, i) => ({ ...p, pos: i + 1 })))
-  }
+  // ── Fetch services on mount ──
+  useEffect(() => {
+    fetch('http://localhost:3001/api/services')
+      .then(res => res.json())
+      .then(data => {
+        const open = data.services.filter(s => s.status === 'open')
+        setServices(data.services)
+        if (open.length) {
+          setSelectedSvc(open[0].id)
+        }
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
 
-  function confirmRemove() {
-    setQueue(prev => prev.filter(p => p.id !== removeId).map((p, i) => ({ ...p, pos: i + 1 })))
-    setRemoveId(null)
+  // ── Fetch queue whenever selected service changes ──
+  useEffect(() => {
+    if (!selectedSvc) return
+    fetch(`http://localhost:3001/api/queue/${selectedSvc}`)
+      .then(res => res.json())
+      .then(data => setQueue(data.queue || []))
+      .catch(() => setQueue([]))
+  }, [selectedSvc])
+
+  function handleServiceChange(id) {
+    setSelectedSvc(id)
+    setServed([])
   }
 
   function getWait(idx) {
@@ -43,21 +44,70 @@ export default function QueueManagement() {
     return idx === 0 ? 'Now' : `~${mins} min`
   }
 
+  function formatTime(isoString) {
+    if (!isoString) return ''
+    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  async function serveNext() {
+    if (!queue.length) return
+    try {
+      const res  = await fetch(`http://localhost:3001/api/queue/${selectedSvc}/serve-next`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setServed(prev => [{
+          ...data.served,
+          servedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }, ...prev])
+        // Refresh queue from backend
+        const qRes  = await fetch(`http://localhost:3001/api/queue/${selectedSvc}`)
+        const qData = await qRes.json()
+        setQueue(qData.queue || [])
+      }
+    } catch (err) {
+      console.error('Failed to serve next:', err)
+    }
+  }
+
+  async function confirmRemove() {
+    try {
+      const entry = queue.find(q => q.id === removeId)
+      const res   = await fetch(`http://localhost:3001/api/queue/${selectedSvc}/leave`, {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ userId: entry?.userId }),
+      })
+      if (res.ok) {
+        const qRes  = await fetch(`http://localhost:3001/api/queue/${selectedSvc}`)
+        const qData = await qRes.json()
+        setQueue(qData.queue || [])
+      }
+      setRemoveId(null)
+    } catch (err) {
+      console.error('Failed to remove patient:', err)
+      setRemoveId(null)
+    }
+  }
+
+  if (loading) return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="text-gray-500 font-medium">Loading queue...</div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-gray-100 font-inter">
-
-      
-
       <div className="max-w-3xl mx-auto px-4 py-10">
         <div className="bg-white rounded-2xl shadow-md overflow-hidden">
 
           {/* ── Blue header banner ── */}
           <div className="bg-[#2B4ACB] px-8 py-6">
-            <h1 className="text-white text-2xl font-bold">Queue Management</h1>
-            <p className="text-white/75 text-sm mt-1">Monitor and manage the live patient queue.</p>
+            <h1 className="!text-white text-2xl font-bold">Queue Management</h1>
+            <p className="!text-white/75 text-sm mt-1">Monitor and manage the live patient queue.</p>
           </div>
 
-          {/* ── Card body ── */}
           <div className="px-8 py-6">
 
             {/* Select Service */}
@@ -67,22 +117,24 @@ export default function QueueManagement() {
               </label>
               <p className="text-sm text-gray-400 mb-3">Choose a service to view and manage its queue.</p>
               <select
-                value={selectedSvc}
-                onChange={e => { setSelectedSvc(Number(e.target.value)); setQueue(INITIAL_QUEUE); setServed([]) }}
+                value={selectedSvc || ''}
+                onChange={e => handleServiceChange(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-lg text-sm border border-gray-300 bg-white
                            text-gray-700 outline-none appearance-none cursor-pointer font-medium
                            focus:border-[#2B4ACB] focus:ring-2 focus:ring-[#2B4ACB]/10 transition-all"
               >
-                {SERVICES.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {services.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} {s.status === 'closed' ? '(Closed)' : ''}</option>
+                ))}
               </select>
             </div>
 
             {/* Queue stats */}
             <div className="grid grid-cols-3 gap-3 mb-6">
               {[
-                { label: 'In Queue',     val: queue.length                                          },
+                { label: 'In Queue',     val: queue.length },
                 { label: 'Est. Total',   val: queue.length ? `~${queue.length * (svc?.duration || 15)} min` : '—' },
-                { label: 'Served Today', val: served.length                                         },
+                { label: 'Served Today', val: served.length },
               ].map((s, i) => (
                 <div key={i} className="border border-gray-200 rounded-xl p-4 text-center">
                   <div className="text-2xl font-extrabold text-[#2B4ACB]">{s.val}</div>
@@ -100,7 +152,9 @@ export default function QueueManagement() {
                     {queue[0] ? queue[0].name : 'No patients waiting'}
                   </p>
                   {queue[0] && (
-                    <p className="text-sm text-gray-400 mt-0.5">{queue[0].id} · Joined {queue[0].joined}</p>
+                    <p className="text-sm text-gray-400 mt-0.5">
+                      {queue[0].id} · Joined {formatTime(queue[0].joinedAt)}
+                    </p>
                   )}
                 </div>
                 <button
@@ -138,26 +192,24 @@ export default function QueueManagement() {
                       className={`border rounded-xl p-4 flex items-center gap-4 transition-colors
                                   ${i === 0 ? 'border-[#2B4ACB] bg-[#EEF1FB]' : 'border-gray-200 bg-white'}`}
                     >
-                      {/* Position number */}
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center
                                        font-extrabold text-lg shrink-0
                                        ${i === 0 ? 'bg-[#2B4ACB] text-white' : 'bg-gray-100 text-gray-600'}`}>
-                        {q.pos}
+                        {q.position}
                       </div>
 
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-gray-800 text-sm">{q.name}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">{q.id} · Joined {q.joined}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          {q.id} · Joined {formatTime(q.joinedAt)}
+                        </div>
                       </div>
 
-                      {/* Wait time */}
                       <div className="text-center shrink-0">
                         <div className="text-sm font-bold text-gray-700">{getWait(i)}</div>
                         <div className="text-xs text-gray-400">wait</div>
                       </div>
 
-                      {/* Status badge */}
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0
                                         ${q.status === 'ready'
                                           ? 'bg-green-100 text-green-700'
@@ -165,7 +217,6 @@ export default function QueueManagement() {
                         {q.status === 'ready' ? '● Ready' : '● Waiting'}
                       </span>
 
-                      {/* Remove button */}
                       <button
                         onClick={() => setRemoveId(q.id)}
                         className="text-xs font-semibold text-red-500 hover:text-red-700
