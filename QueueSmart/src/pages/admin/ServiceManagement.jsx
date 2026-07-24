@@ -1,23 +1,15 @@
-import { useState } from 'react'
-
-const INITIAL_SERVICES = [
-  { id: 1, name: 'General Check-Up',        desc: 'Routine health assessment and vital signs check.',         duration: 15, priority: 'medium', status: 'open'   },
-  { id: 2, name: 'Blood Draw / Lab Work',   desc: 'Blood sample collection for laboratory analysis.',         duration: 10, priority: 'low',    status: 'open'   },
-  { id: 3, name: 'Specialist Consultation', desc: 'Appointment with a specialist for focused care.',          duration: 30, priority: 'high',   status: 'open'   },
-  { id: 4, name: 'Prescription Refill',     desc: 'Routine medication renewal and pharmacist review.',        duration: 8,  priority: 'low',    status: 'closed' },
-  { id: 5, name: 'Urgent Care',             desc: 'Immediate attention for acute, non-emergency conditions.', duration: 20, priority: 'high',   status: 'open'   },
-]
+import { useState, useEffect } from 'react'
 
 const EMPTY = { name: '', desc: '', duration: '', priority: 'medium' }
 
 function validate(values) {
   const errors = {}
-  if (!values.name.trim())            errors.name     = 'Service name is required.'
-  else if (values.name.length > 100)  errors.name     = 'Max 100 characters.'
-  if (!values.desc.trim())            errors.desc     = 'Description is required.'
-  if (!values.duration)               errors.duration = 'Duration is required.'
+  if (!values.name.trim())           errors.name     = 'Service name is required.'
+  else if (values.name.length > 100) errors.name     = 'Max 100 characters.'
+  if (!values.desc.trim())           errors.desc     = 'Description is required.'
+  if (!values.duration)              errors.duration = 'Duration is required.'
   else if (isNaN(values.duration) || Number(values.duration) < 1)
-                                      errors.duration = 'Must be a positive number.'
+                                     errors.duration = 'Must be a positive number.'
   return errors
 }
 
@@ -28,55 +20,99 @@ const PRIORITY_STYLES = {
 }
 
 export default function ServiceManagement() {
-  const [services, setServices] = useState(INITIAL_SERVICES)
+  const [services, setServices] = useState([])
+  const [loading,  setLoading]  = useState(true)
   const [modal,    setModal]    = useState(false)
   const [editing,  setEditing]  = useState(null)
   const [values,   setValues]   = useState(EMPTY)
   const [errors,   setErrors]   = useState({})
   const [deleteId, setDeleteId] = useState(null)
 
+  // ── Fetch services from backend on mount ──
+  useEffect(() => {
+    fetch('http://localhost:3001/api/services')
+      .then(res => res.json())
+      .then(data => { setServices(data.services); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
   function openAdd() {
     setEditing(null); setValues(EMPTY); setErrors({}); setModal(true)
   }
+
   function openEdit(svc) {
     setEditing(svc.id)
     setValues({ name: svc.name, desc: svc.desc, duration: String(svc.duration), priority: svc.priority })
     setErrors({}); setModal(true)
   }
+
   function set(field, val) {
     setValues(v => ({ ...v, [field]: val }))
     if (errors[field]) setErrors(e => ({ ...e, [field]: '' }))
   }
-  function handleSave() {
+
+  async function handleSave() {
     const errs = validate(values)
     if (Object.keys(errs).length) { setErrors(errs); return }
-    if (editing) {
-      setServices(prev => prev.map(s => s.id === editing
-        ? { ...s, name: values.name, desc: values.desc, duration: Number(values.duration), priority: values.priority }
-        : s))
-    } else {
-      setServices(prev => [...prev, {
-        id: Date.now(), name: values.name, desc: values.desc,
-        duration: Number(values.duration), priority: values.priority, status: 'open',
-      }])
+
+    try {
+      if (editing) {
+        // Update existing service
+        const res  = await fetch(`http://localhost:3001/api/services/${editing}`, {
+          method:  'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(values),
+        })
+        const data = await res.json()
+        if (res.ok) setServices(prev => prev.map(s => s.id === editing ? data.service : s))
+      } else {
+        // Create new service
+        const res  = await fetch('http://localhost:3001/api/services', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(values),
+        })
+        const data = await res.json()
+        if (res.ok) setServices(prev => [...prev, data.service])
+      }
+      setModal(false)
+    } catch (err) {
+      console.error('Failed to save service:', err)
     }
-    setModal(false)
   }
-  function handleDelete() {
-    setServices(prev => prev.filter(s => s.id !== deleteId))
-    setDeleteId(null)
+
+  async function handleDelete() {
+    try {
+      const res = await fetch(`http://localhost:3001/api/services/${deleteId}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) setServices(prev => prev.filter(s => s.id !== deleteId))
+      setDeleteId(null)
+    } catch (err) {
+      console.error('Failed to delete service:', err)
+    }
   }
-  function toggleStatus(id) {
-    setServices(prev => prev.map(s => s.id === id
-      ? { ...s, status: s.status === 'open' ? 'closed' : 'open' } : s))
+
+  async function toggleStatus(id) {
+    try {
+      const res  = await fetch(`http://localhost:3001/api/services/${id}/toggle`, {
+        method: 'PATCH',
+      })
+      const data = await res.json()
+      if (res.ok) setServices(prev => prev.map(s => s.id === id ? data.service : s))
+    } catch (err) {
+      console.error('Failed to toggle status:', err)
+    }
   }
+
+  if (loading) return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="text-gray-500 font-medium">Loading services...</div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-gray-100 font-inter">
-
-    
-
-      {/* ── Page content ── */}
       <div className="max-w-3xl mx-auto px-4 py-10">
         <div className="bg-white rounded-2xl shadow-md overflow-hidden">
 
@@ -86,10 +122,7 @@ export default function ServiceManagement() {
             <p className="text-white/75 text-sm mt-1">Create, edit, and manage clinic services.</p>
           </div>
 
-          {/* Card body */}
           <div className="px-8 py-6">
-
-            {/* Add button */}
             <div className="flex justify-end mb-6">
               <button
                 onClick={openAdd}
@@ -100,7 +133,6 @@ export default function ServiceManagement() {
               </button>
             </div>
 
-            {/* Services list */}
             <div className="flex flex-col gap-4">
               {services.map(s => (
                 <div key={s.id} className="border border-gray-200 rounded-xl p-5">
@@ -122,7 +154,9 @@ export default function ServiceManagement() {
                         </button>
                       </div>
                       <p className="text-sm text-gray-500 mb-2">{s.desc}</p>
-                      <p className="text-xs text-gray-400">Expected duration: <strong className="text-gray-600">{s.duration} min</strong></p>
+                      <p className="text-xs text-gray-400">
+                        Expected duration: <strong className="text-gray-600">{s.duration} min</strong>
+                      </p>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button
@@ -154,8 +188,6 @@ export default function ServiceManagement() {
              onClick={() => setModal(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
                onClick={e => e.stopPropagation()}>
-
-            {/* Modal blue header */}
             <div className="bg-[#2B4ACB] px-7 py-5">
               <h2 className="text-white text-lg font-bold">
                 {editing ? 'Edit Service' : 'Create New Service'}
@@ -166,7 +198,6 @@ export default function ServiceManagement() {
             </div>
 
             <div className="px-7 py-6">
-              {/* Service Name */}
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Service Name <span className="text-red-500">*</span>
@@ -186,7 +217,6 @@ export default function ServiceManagement() {
                 </div>
               </div>
 
-              {/* Description */}
               <div className="mb-4">
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Description <span className="text-red-500">*</span>
@@ -203,7 +233,6 @@ export default function ServiceManagement() {
                 {errors.desc && <p className="text-xs text-red-500 mt-1">⚠ {errors.desc}</p>}
               </div>
 
-              {/* Duration + Priority */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -272,7 +301,8 @@ export default function ServiceManagement() {
             </div>
             <div className="px-7 py-6">
               <p className="text-sm text-gray-600 mb-6">
-                Are you sure you want to delete <strong className="text-gray-800">{services.find(s => s.id === deleteId)?.name}</strong>?
+                Are you sure you want to delete{' '}
+                <strong className="text-gray-800">{services.find(s => s.id === deleteId)?.name}</strong>?
               </p>
               <div className="flex gap-3">
                 <button
