@@ -21,7 +21,7 @@ export default function QueueStatus() {
     async function getQueueStatus() {
       try {
         const response = await fetch(
-          "http://localhost:5000/queuestatus"
+          "http://localhost:5000/api/queuestatus"
         );
 
         if(!response.ok){

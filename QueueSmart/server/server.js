@@ -1,13 +1,7 @@
-//temp data
-
-
-//testing server is on
-
-
-
 const express = require('express')
 const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
+const { calculateWaitTime } = require('./waitTime')
 
 const app  = express()
 const PORT = 3001
@@ -38,6 +32,7 @@ let queue = [
 ]
 
 const history = []
+const notifications = []
 
 const queueStatus = {
     queuePosition: 2,
@@ -66,6 +61,60 @@ function validateFields(rules, body) {
       errors.push({ field, message: `${field} must be one of: ${rule.enum.join(', ')}.` })
   }
   return errors
+}
+
+// Notications Handling-----------------------------------------------------------
+function createNotification(userId,serviceId,type,message,waitTimeData = null){
+  const notification = {
+    id: uuidv4(),
+    userId,
+    serviceId,
+    type,
+    message,
+    read: false,
+    createdAt: new Date().toISOString(),
+    ...(waitTimeData && {
+      estimatedWaitMinutes: waitTimeData.estimatedWaitMinutes,
+      severityCategory: waitTimeData.severityCategory,
+    }),
+  }
+
+  notifications.push(notification)
+
+  console.log(
+    `[Notification] User ${userId} | ${type}: ${message}`
+  )
+
+  return notification
+}
+
+function checkCloseToFront(entry,service) {
+  const waitTimeData = calculateWaitTime(
+    entry.position,
+    service.duration,
+    entry.vitals
+  )
+
+  const isClose = entry.position <=2 || waitTimeData.estimatedWaitMinutes <= 15
+
+  if(isClose && !entry.closeNotificationSent) {
+    entry.closeNotificationSent = true
+
+    const message = 
+    waitTimeData.estimatedWaitMinutes === 0
+      ? `You are next for ${service.name}. Please be ready.`
+      : `You are close to being served for ${service.name}. Your estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`
+
+    return createNotification(
+    entry.userId,
+    entry.serviceId,
+    'almost_ready',
+    message,
+    waitTimeData
+    )
+  }
+
+  return null
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -138,7 +187,7 @@ app.get('/api/health', (req, res) => {
 })
 
 // GET /api/queuestatus
-app.get("/queuestatus", (req,res) => {
+app.get("/api/queuestatus", (req,res) => {
     res.status(200).json(queueStatus);
 })
 
@@ -253,6 +302,8 @@ app.post('/api/queue/:serviceId/join', (req, res) => {
     joinedAt:  new Date().toISOString(),
     position,
     status:    'waiting',
+    vitals,
+    closeNotificationSent: false,
   }
   queue.push(entry)
 
