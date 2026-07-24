@@ -15,6 +15,11 @@ const users = []
 users.push({ id: uuidv4(), name: 'Admin User',  email: 'admin@clinic.com',  password: 'admin123',   role: 'admin'   })
 users.push({ id: uuidv4(), name: 'Sarah Jones', email: 'sarah@clinic.com',  password: 'patient123', role: 'patient' })
 
+//for temp dynamic user info for queue calculation
+const sarahUser = users.find(
+  user => user.email === 'sarah@clinic.com'
+);
+
 const sessions = {}
 
 const services = [
@@ -26,9 +31,34 @@ const services = [
 ]
 
 let queue = [
-  { id: 'q1', serviceId: 's1', userId: 'u2', name: 'Sarah Jones',  joinedAt: new Date().toISOString(), position: 1, status: 'waiting' },
-  { id: 'q2', serviceId: 's1', userId: 'u3', name: 'James Okonkwo',joinedAt: new Date().toISOString(), position: 2, status: 'waiting' },
-  { id: 'q3', serviceId: 's1', userId: 'u4', name: 'Linda Pham',   joinedAt: new Date().toISOString(), position: 3, status: 'waiting' },
+  { id: 'q1', 
+    serviceId: 's1', 
+    userId: sarahUser.id, 
+    name: sarahUser.name,  
+    joinedAt: new Date().toISOString(), 
+    position: 1, 
+    status: 'waiting',
+    vitals : {
+      bodyTemp: 98.6,
+      painLevel: 2,
+      sysBP: 120,
+      diaBP: 80,
+    },
+    closeNotificationSent: false },
+  { id: 'q2', 
+    serviceId: 's1', 
+    userId: 'u3', 
+    name: 'James Okonkwo',
+    joinedAt: new Date().toISOString(),
+    position: 2, 
+    status: 'waiting' },
+  { id: 'q3', 
+    serviceId: 's1', 
+    userId: 'u4', 
+    name: 'Linda Pham',   
+    joinedAt: new Date().toISOString(), 
+    position: 3, 
+    status: 'waiting' },
 ]
 
 const history = [];

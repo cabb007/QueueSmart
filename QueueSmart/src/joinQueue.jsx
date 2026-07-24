@@ -79,27 +79,6 @@ function JoinQueue(){
   return( 
 
     <>
-      <div className="navbar">
-
-        <h2 className="logo">
-          QueueSmart
-        </h2>
-
-        <div className="navLinks">
-    <       NavLink to="/joinqueue" className="navLink">
-              Join Queue
-            </NavLink>
-
-            <NavLink to="/queuehistory" className="navLink">
-                Queue History
-            </NavLink>
-        </div>
-        <button className="logoutButton">
-          Logout
-        </button>
-
-      </div>
-
       <div className="container">
         <div className="joinCard">
 

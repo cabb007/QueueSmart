@@ -18,30 +18,82 @@ export default function QueueStatus() {
   };
 
   useEffect(() => {
+    const serviceId = "s1";
+    
+    const storedUser = JSON.parse(
+      localStorage.getItem("user") || "null"
+    );
+
+    const userId = storedUser?.id;
+
+    if(!userId){
+      setError("No logged-in user found");
+      setLoading(false);
+      return;
+    }
+
     async function getQueueStatus() {
       try {
         const response = await fetch(
-          "http://localhost:5000/api/queuestatus"
+          `http://localhost:3001/api/queue/${serviceId}`
         );
 
-        if(!response.ok){
-          throw new Error("Unable to retrieve queue status");
+        if (!response.ok) {
+          throw new Error(
+            `Unable to retrieve queue status: ${response.status}`
+          );
         }
 
         const data = await response.json();
 
-        setQueuePosition(data.queuePosition);
-        setEstimatedWaitTime(data.estimatedWaitTime);
-        setStatus(data.status);
+        const patientEntry = data.queue.find(
+          (entry) => entry.userId === userId
+        );
+
+        if (!patientEntry) {
+          setQueuePosition(null);
+          setEstimatedWaitTime("");
+          setStatus("served");
+          setError("");
+          return;
+        }
+
+        setQueuePosition(patientEntry.position);
+
+        setEstimatedWaitTime(
+          `${patientEntry.estimatedWaitMinutes} minutes`
+        );
+
+        if (patientEntry.position === 1) {
+          setStatus("almost ready");
+        } else {
+          setStatus("waiting");
+        }
+
+        setError("");
       } catch (error) {
-        console.error(error);
-        setError(error.message);
+        console.error("Queue status request failed:", error);
+
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Unable to retrieve queue status"
+        );
       } finally {
-        setLoading (false);
+        setLoading(false);
       }
     }
 
+    // Retrieve the status immediately.
     getQueueStatus();
+
+    // Retrieve an updated status every five seconds.
+    const intervalId = setInterval(getQueueStatus, 5000);
+
+    // Stop the interval when the component is removed.
+    return () => {
+      clearInterval(intervalId);
+    };
   }, []);
 
   function handleLogout() {
@@ -66,18 +118,6 @@ export default function QueueStatus() {
 
   return (
     <div className="font-sans bg-slate-50 text-slate-900 min-h-screen">
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <span className="text-2xl font-bold tracking-tight text-blue-600">
-            QueueSmart
-          </span>
-
-          <button className="text-sm font-medium text-slate-600 hover:text-slate-900">
-            Logout
-          </button>
-        </div>
-      </nav>
-
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-8">
