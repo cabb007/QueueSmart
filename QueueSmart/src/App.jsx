@@ -4,6 +4,8 @@ import Register          from './pages/auth/Register'
 import ServiceManagement from './pages/admin/ServiceManagement'
 import QueueManagement   from './pages/admin/QueueManagement'
 import QueueStatus       from './QueueStatus'
+import JoinQueue         from './JoinQueue'
+import QueueHistory      from './QueueHistory'
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -67,6 +69,8 @@ export default function App() {
       <Route path="/services" element={<AdminLayout><ServiceManagement /></AdminLayout>} />
       <Route path="/queue"    element={<AdminLayout><QueueManagement /></AdminLayout>} />
       <Route path="/queuestatus" element={<QueueStatus />} /> 
+      <Route path="/joinqueue" element={<JoinQueue />} />
+      <Route path="/queuehistory" element={<QueueHistory />} />
     </Routes>
   )
 }
