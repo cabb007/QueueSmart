@@ -1,7 +1,7 @@
 const express = require('express')
 const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
-const { calculateWaitTime } = require('./waitTime')
+const { calculateWaitTime } = require('./waitTimeCaclulator')
 
 const app  = express()
 const PORT = 3001
