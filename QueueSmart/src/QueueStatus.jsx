@@ -16,7 +16,7 @@ export default function QueueStatus() {
 
   return (
     <div className="font-sans bg-slate-50 text-slate-900 min-h-screen">
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
+      {/* <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <span className="text-2xl font-bold tracking-tight text-blue-600">
             QueueSmart
@@ -26,7 +26,7 @@ export default function QueueStatus() {
             Logout
           </button>
         </div>
-      </nav>
+      </nav> */}
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">

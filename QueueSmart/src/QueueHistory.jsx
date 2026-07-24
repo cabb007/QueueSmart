@@ -3,7 +3,7 @@ import './QueueHistory.css';
 function QueueHistory() {
     return (
         <>
-            <div className="navbar">
+            {/* <div className="navbar">
 
                 <h2 className="logo">QueueSmart</h2>
 
@@ -11,7 +11,7 @@ function QueueHistory() {
                     Logout
                 </button>
 
-            </div>
+            </div> */}
 
             <div className="container">
 
