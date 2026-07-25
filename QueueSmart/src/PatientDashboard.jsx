@@ -276,7 +276,7 @@ const PatientDashboard = () => {
 
                     <p className="text-2xl font-bold mt-1 capitalize">
                       {queuePosition === 1
-                        ? "Almost ready"
+                        ? "almost_ready"
                         : queueEntry.status}
                     </p>
                   </div>

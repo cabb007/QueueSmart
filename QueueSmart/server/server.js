@@ -107,12 +107,11 @@ function validateFields(rules, body) {
 // Notications Handling-----------------------------------------------------------
 function createNotification(userId,serviceId,type,message,waitTimeData = null){
   const notification = {
-    id: 1,
+    id: uuidv4(),
     userId,
     serviceId,
     type,
     message,
-    read: false,
     createdAt: new Date().toISOString(),
     ...(waitTimeData && {
       estimatedWaitMinutes: waitTimeData.estimatedWaitMinutes,
@@ -474,33 +473,117 @@ app.delete('/api/queue/:serviceId/leave', (req, res) => {
 
 // POST /api/queue/:serviceId/serve-next
 app.post('/api/queue/:serviceId/serve-next', (req, res) => {
-  const svc = services.find(s => s.id === req.params.serviceId)
-  if (!svc) return res.status(404).json({ message: 'Service not found.' })
+  try {
+    const serviceId = req.params.serviceId
 
-  const serviceQueue = queue
-    .filter(e => e.serviceId === req.params.serviceId)
-    .sort((a, b) => a.position - b.position)
+    const svc = services.find(
+      service => service.id === serviceId
+    )
 
-  if (!serviceQueue.length) return res.status(400).json({ message: 'Queue is empty.' })
+    if (!svc) {
+      return res.status(404).json({
+        message: 'Service not found.',
+      })
+    }
 
-  const next = serviceQueue[0]
-  queue = queue.filter(e => e.id !== next.id)
-  queue
-    .filter(e => e.serviceId === req.params.serviceId)
-    .sort((a, b) => a.position - b.position)
-    .forEach((e, i) => { e.position = i + 1 })
+    const serviceQueue = queue
+      .filter(entry => entry.serviceId === serviceId)
+      .sort((a, b) => a.position - b.position)
 
-  history.push({
-    id:          uuidv4(),
-    userId:      next.userId,
-    serviceId:   req.params.serviceId,
-    serviceName: svc.name,
-    joinedAt:    next.joinedAt,
-    servedAt:    new Date().toISOString(),
-    outcome:     'served',
-  })
+    if (serviceQueue.length === 0) {
+      return res.status(400).json({
+        message: 'Queue is empty.',
+      })
+    }
 
-  res.status(200).json({ message: 'Next user served.', served: next })
+    const nextPatient = serviceQueue[0]
+
+    const nextPatientIndex = queue.findIndex(
+      entry => entry.id === nextPatient.id
+    )
+
+    queue.splice(nextPatientIndex, 1)
+
+    nextPatient.status = 'served'
+    nextPatient.position = 0
+
+    const servedNotification = createNotification(
+      nextPatient.userId,
+      nextPatient.serviceId,
+      'served',
+      `It is now your turn for ${svc.name}.`,
+      {
+        estimatedWaitMinutes: 0,
+        severityCategory: 'N/A',
+      }
+    )
+
+    history.push({
+      id: uuidv4(),
+      userId: nextPatient.userId,
+      serviceId,
+      serviceName: svc.name,
+      joinedAt: nextPatient.joinedAt,
+      servedAt: new Date().toISOString(),
+      outcome: 'served',
+    })
+
+    const createdNotifications = []
+
+    const remainingQueue = queue
+      .filter(entry => entry.serviceId === serviceId)
+      .sort((a, b) => a.position - b.position)
+
+    remainingQueue.forEach((entry, index) => {
+      const previousStatus = entry.status
+
+      entry.position = index + 1
+
+      const waitTimeData = calculateWaitTime(
+        entry.position,
+        svc.duration,
+        entry.vitals || {}
+      )
+
+      const newStatus =
+        entry.position <= 2 ||
+        waitTimeData.estimatedWaitMinutes <= 15
+          ? 'almost ready'
+          : 'waiting'
+
+      entry.status = newStatus
+
+      if (
+        previousStatus === 'waiting' &&
+        newStatus === 'almost ready'
+      ) {
+        const notification = createNotification(
+          entry.userId,
+          entry.serviceId,
+          'almost_ready',
+          `You are almost ready for ${svc.name}. Your current queue position is ${entry.position}.`,
+          waitTimeData
+        )
+
+        createdNotifications.push(notification)
+      }
+    })
+
+    return res.status(200).json({
+      message: 'Next user served.',
+      served: nextPatient,
+      servedNotification,
+      notifications: createdNotifications,
+      queue: remainingQueue,
+    })
+  } catch (error) {
+    console.error('Serve-next route error:', error)
+
+    return res.status(500).json({
+      message: 'Unable to serve the next user.',
+      error: error.message,
+    })
+  }
 })
 
 // GET /api/history/:userId
