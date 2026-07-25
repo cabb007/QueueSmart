@@ -690,15 +690,24 @@ app.get("/history", (req,res) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(
+      `QueueSmart API running on http://localhost:${PORT}`
+    )
+  })
+}
+
+function resetData() {
+  queue.length = 0
+  history.length = 0
+  notifications.length = 0
+  patientID = 0
+}
+
+// Supports: const app = require("./server")
 module.exports = app
-if(require.main === module){
-    app.listen(PORT, () => {console.log(`QueueSmart API running on http://localhost:${PORT}`)})
-}
 
-function resetData() { 
-    queue.length = 0;
-    history.length = 0;
-    patientID = 0;
-}
-
-module.exports = {app, resetData};
+// Supports: const { app, resetData } = require("./server")
+module.exports.app = app
+module.exports.resetData = resetData

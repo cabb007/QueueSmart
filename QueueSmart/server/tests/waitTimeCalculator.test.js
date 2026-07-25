@@ -1,4 +1,4 @@
-const { calculateWaitTime, assessSeverity } = require('../utils/waitTimeCalculator');
+const { calculateWaitTime, assessSeverity } = require('../waitTimeCalculator');
 
 describe('Wait-Time Estimation & Severity Module', () => {
 
