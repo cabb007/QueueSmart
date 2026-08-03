@@ -115,17 +115,6 @@ app.get("/history", (req,res) => {
     res.json(history);
 });
 
-async function testConnection(){
-    try{
-        const connection = await db.getConnection(); //this is where we await to contact Azure. essentially use db to connect
-        console.log("Connected to Azure mysql database")
-        connection.release(); //releasing the pool for later use
-    }catch(error){
-        console.log("Connection failed");
-        console.error(error);
-    }
-}
-testConnection();
 
 if(require.main === module){
     app.listen(3000,()=> { //start waiting for requests on port 3000
