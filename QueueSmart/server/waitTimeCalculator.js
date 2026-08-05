@@ -1,5 +1,5 @@
 /**
- * Assesses patient severity level based on vital signs and intake data.
+ * Assesses patient severity level based on vital signs and intake data..
  * @param {Object} vitals - Patient vitals { bodyTemp, painLevel, sysBP, diaBP }
  * @returns {Object} { category: string, multiplier: number }
  */
