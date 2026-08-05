@@ -1,3 +1,5 @@
+require('dotenv').config()
+const db = require('./db')
 const express = require('express')
 const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
@@ -685,8 +687,29 @@ app.post("/joinQueue", (req,res) =>{
 
 });
 
-app.get("/history", (req,res) => {
-    res.json(history);
+app.get('/api/db-queues', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM queue')
+    res.json(rows)
+  } catch (error) {
+    console.error('DB Error:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+app.get('/api/db-entries', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM QueueEntry');
+    res.json(rows);
+  } catch (error) {
+    try {
+      // Fallback in case table name in MySQL is lowercase
+      const [rows] = await db.query('SELECT * FROM queue_entry');
+      res.json(rows);
+    } catch (err) {
+      console.error('DB Error:', err);
+      res.status(500).json({ error: err.message });
+    }
+  }
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
