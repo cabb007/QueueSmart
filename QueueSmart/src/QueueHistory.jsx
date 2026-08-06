@@ -1,61 +1,61 @@
 import './QueueHistory.css';
+import { useState, useEffect } from 'react';
+import { NavLink } from "react-router-dom";
+import "react-toastify/dist/ReactToastify.css";
 
 function QueueHistory() {
-    return (
-        <>
-            {/* <div className="navbar">
 
-                <h2 className="logo">QueueSmart</h2>
+  const [history, setHistory] = useState([]);
 
-                <button className="logoutButton">
-                    Logout
-                </button>
+  async function handleHistory() {
+    try {
+      const response = await fetch("http://localhost:3000/history", {
+        method: "GET"
+      });
 
-            </div> */}
+      if (!response.ok) {
+        throw new Error("Failed to retrieve history");
+      }
 
-            <div className="container">
+      const data = await response.json();
+      setHistory(data);
+    } catch (error) {
+      console.log(error);
+    }
+  }
 
-                <div className="historyCard">
+  useEffect(() => {
+    handleHistory();
+  }, []);
 
-                    <div className="cardHeader">
+  return (
+    <>
+      <div className="container">
+        <div className="historyCard">
 
-                        <h2>Queue History</h2>
+          <div className="cardHeader">
+            <h2>Queue History</h2>
+            <p className="pageDescription">
+              View your previous appointments
+            </p>
+          </div>
 
-                        <p className="pageDescription">
-                            View your previous appointments
-                        </p>
+          <div className="historyContent">
+            {history.map((appointment) => (
+              <div className="historyEntry" key={appointment.id}>
+                <h3>{appointment.service}</h3>
+                <p>{appointment.name}</p>
+                <p>ID Number: {appointment.id}</p>
+              </div>
+            ))}
+          </div>
 
-                    </div>
+          <div className="historyFooter">End of appointment history</div>
 
-                    <div className="historyContent">
-
-                        <div className="historyEntry">
-                            <h3>Primary Care</h3>
-                            <p>July 3, 2026</p>
-                            <p>Wait Time: 18 minutes</p>
-                        </div>
-
-                        <div className="historyEntry">
-                            <h3>Urgent Care</h3>
-                            <p>June 15, 2026</p>
-                            <p>Wait Time: 8 minutes</p>
-                        </div>
-
-                        <div className ="historyEntry">
-                            <h3>Other</h3>
-                            <p>March 28, 2026</p>
-                            <p>Wait Time: 18 minutes</p>
-                        </div>
-
-                    </div>
-                        <div className="historyFooter">End of appointment history</div>
-
-                </div>
-
-            </div>
-
-        </>
-    );
+        </div>
+      </div>
+    </>
+  );
 }
 
 export default QueueHistory;

@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import './joinQueue.css';
 
 function JoinQueue() {
   const navigate = useNavigate()
 
-  const [services,     setServices]     = useState([])
-  const [selectedSvc,  setSelectedSvc]  = useState('')
-  const [joined,       setJoined]       = useState(false)
-  const [queueEntry,   setQueueEntry]   = useState(null)
-  const [loading,      setLoading]      = useState(false)
-  const [error,        setError]        = useState('')
+  const [services,    setServices]    = useState([])
+  const [selectedSvc, setSelectedSvc] = useState('')
+  const [joined,      setJoined]      = useState(false)
+  const [queueEntry,  setQueueEntry]  = useState(null)
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState('')
 
-  // Get logged in user from localStorage
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-  // Fetch services from backend on mount
   useEffect(() => {
     fetch('http://localhost:3001/api/services')
       .then(res => res.json())
@@ -26,12 +26,6 @@ function JoinQueue() {
       })
       .catch(() => setError('Could not load services.'))
   }, [])
-
-  function logout() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    navigate('/login')
-  }
 
   async function handleJoin() {
     if (!selectedSvc) return
@@ -46,13 +40,16 @@ function JoinQueue() {
       const data = await res.json()
 
       if (!res.ok) {
+        toast.error(data.message || 'Could not join queue.')
         setError(data.message || 'Could not join queue.')
         return
       }
 
       setJoined(true)
       setQueueEntry(data)
+      toast.success('You have joined the queue!')
     } catch {
+      toast.error('Could not connect to server.')
       setError('Could not connect to server.')
     } finally {
       setLoading(false)
@@ -72,13 +69,16 @@ function JoinQueue() {
       const data = await res.json()
 
       if (!res.ok) {
+        toast.error(data.message || 'Could not leave queue.')
         setError(data.message || 'Could not leave queue.')
         return
       }
 
       setJoined(false)
       setQueueEntry(null)
+      toast.success('You have left the queue.')
     } catch {
+      toast.error('Could not connect to server.')
       setError('Could not connect to server.')
     } finally {
       setLoading(false)
@@ -88,24 +88,13 @@ function JoinQueue() {
   const svc = services.find(s => s.id === selectedSvc)
 
   function getOrdinal(n) {
-    const s = ['th','st','nd','rd']
+    const s = ['th', 'st', 'nd', 'rd']
     const v = n % 100
-    return n + (s[(v-20)%10] || s[v] || s[0])
+    return n + (s[(v - 20) % 10] || s[v] || s[0])
   }
 
   return (
     <>
-      {/* <div className="navbar">
-        <h2 className="logo">QueueSmart</h2>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <button className="logoutButton" onClick={() => navigate('/dashboard')}>Dashboard</button>
-          <button className="logoutButton" onClick={() => navigate('/join')}>Join Queue</button>
-          <button className="logoutButton" onClick={() => navigate('/queuestatus')}>Queue Status</button>
-          <button className="logoutButton" onClick={() => navigate('/history')}>History</button>
-        </div>
-        <button className="logoutButton" onClick={logout}>Logout</button>
-      </div> */}
-
       <div className="container">
         <div className="joinCard">
 
@@ -119,17 +108,15 @@ function JoinQueue() {
 
           <div className="card-content">
 
-            {/* Error message */}
             {error && (
               <p style={{ color: 'red', fontSize: '13px', marginBottom: '10px' }}>
                 {error}
               </p>
             )}
 
-            {/* Service select */}
             <label>Select Service *</label>
             <p className="subText">
-              If your desired service is not listed, please select "Other".
+              If your desired service is not listed, please select "Other" from the menu below.
             </p>
             <select
               className="textBox"
@@ -147,11 +134,9 @@ function JoinQueue() {
               ))}
             </select>
 
-            {/* Patient name */}
             <label>Patient Name</label>
             <p className="subText">{user.name || 'Not logged in'}</p>
 
-            {/* Join button */}
             {!joined && (
               <button
                 className="joinButton"
@@ -162,7 +147,6 @@ function JoinQueue() {
               </button>
             )}
 
-            {/* Wait time */}
             <label>Estimated Wait Time</label>
             <p className="miniText">
               *Wait times and queue positions may vary for different services
@@ -175,7 +159,6 @@ function JoinQueue() {
               </p>
             </div>
 
-            {/* Queue position */}
             <label>Estimated Queue Position</label>
             <div className="greyBox">
               <p className="boldText">
@@ -185,7 +168,6 @@ function JoinQueue() {
               </p>
             </div>
 
-            {/* Leave button */}
             {joined && (
               <button
                 className="joinButton"
@@ -199,6 +181,8 @@ function JoinQueue() {
           </div>
         </div>
       </div>
+
+      <ToastContainer />
     </>
   );
 }
