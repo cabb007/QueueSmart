@@ -6,119 +6,170 @@ const db = require("./db"); //when db.js exports, it exports pool here
 app.use(express.json()); 
 app.use(cors());
 
-const queue = [];
 
-const history = [];
-
-const validFields = [
-    "Primary Care",
-    "Pediatrics",
-    "Urgent Care",
-    "Lab Work",
-    "Other"
-
-]
-
-let patientID = 0;
-
-app.post("/QueueHistory", (req,res)=> {
-
-})
-
-app.post("/leaveQueue", (req,res)=> {
-    if(queue.length ===0){
-        return res.status(400).json({message: "There are no patients in the queue"});
+app.post("/leaveQueue", async (req,res)=> {
+    //check to make sure that the tuple we want to 'leave' the queue is in the queue
+    const [rows] = await db.query(
+        "SELECT entry_id, queue_id, position FROM queueentry WHERE user_id = ? AND status = 'waiting'",
+        [req.body.userId]
+    );
+    if(rows.length === 0 ){
+        return res.status(404).json({
+            message: "You are not in a queue so cant leave"
+        });
     }
-    let location = queue.findIndex(patient => patient.id === req.body.id);
-    
-    if(location === -1){
-        return res.status(404).json({message: "ID could not be located in the Queue. Removal failed"})
-    }
+    const entryId = rows[0].entry_id;
+    const queueId = rows[0].queue_id;
+    const position = rows[0].position;
+    //now we update the status to 'canceled' to signify leaving the queue
+    await db.query(
+        "UPDATE queueentry SET status = 'canceled' WHERE entry_id = ?",
+        [entryId]
+    );
 
+    //now update positions. everyone whos position was greater than the 'removed node' is -1
+    await db.query(
+        "UPDATE queueentry SET position = position -1 WHERE queue_id = ? AND position > ? AND status = 'waiting'",
+        [queueId, position]
+    );
 
-    history.push(queue[location]);
-    queue.splice(location,1);
     res.json({message: "Successfully removed from queue"});
-
-    console.log(queue)
 });
 
-app.post("/joinQueue", (req,res) =>{
+app.post("/joinQueue", async (req,res) =>{
 
-
-    // Ensuring we have strings before calling string methods like trim() or length. unit test adjustment
-    if(typeof req.body.name !== "string" || typeof req.body.service !== "string"){
-        return res.status(400).json({message: "Not a valid name or service"});
+    //-------------VALIDATIONS------------//
+    const [existingQueue] = await db.query(
+        "SELECT entry_id FROM queueentry WHERE user_id = ? AND status = 'waiting'",
+        [req.body.userId]
+    );
+    if(existingQueue.length > 0){
+        return res.status(400).json({
+            message: "Already in queue. Cannot join the queue twice"
+        });
     }
-
-    if(!req.body.name || !req.body.service || req.body.name.trim() === ""){
-        return res.status(400).json({message: "Missing or invalid inputs please try again"}); //res.status(400) means the client sent a bad request
-    }
-
-    if(req.body.name.length > 50){ //max character limit of 50
-        return res.status(400).json({message: "Max character limit of 50"});
-    }
-
-    if(!validFields.includes(req.body.service)){ //checking for a valid service option
+    // changing check for only service
+    if(typeof req.body.service !== "string"){
         return res.status(400).json({message: "Not a valid service"});
     }
 
+    if(!req.body.service || req.body.service.trim() === ""){
+        return res.status(400).json({message: "Empty service"});
+    }
 
-    const patient = { //patient object
-        id: patientID++,
-        name: req.body.name,
-        service: req.body.service,
-        status: "waiting"
+    const [userCheck] = await db.query(
+        "SELECT user_id FROM userprofile WHERE user_id = ?",
+        [req.body.userId]
+    )
+    if(userCheck.length === 0 ){
+        return res.status(404).json({message: "userID not found"});
     }
 
 
-    queue.push(patient); //switched over so instead of pushing req.body im pushing the patient part
+    //------------THIS AREA TO CHANGE FOR DATABSE UPDATE-----------------//
+    const [rows] = await db.query(
+        "SELECT service_id FROM service WHERE name = ?",
+        [req.body.service]
+    )
+    if(rows.length ===0){
+        return res.status(404).json({
+            message: "Service not found when trying to query for the service_id"
+        });
+    }
+    const serviceId = rows[0].service_id;
 
-    let position = queue.length;
+    const [queueRows] = await db.query(
+        "SELECT queue_id FROM queue WHERE service_id = ?",
+        [serviceId]
+    )
+    if(queueRows.length === 0){
+        return res.status(404).json({
+            message: "Service not found when trying to find the queue_id"
+        });
+    }
+    const queueId = queueRows[0].queue_id;
+
+    const [countRows] = await db.query(
+        "SELECT COUNT(*) AS count FROM queueentry WHERE queue_id = ? AND status = 'waiting'",
+        [queueId]
+    )
+    const position = countRows[0].count + 1;
+
+    await db.query(
+        `INSERT INTO queueentry (entry_id, queue_id, user_id, position, joined_at, status)
+        VALUES (?,?,?,?,?,?)`,
+        [
+            uuidv4(),
+            queueId,
+            req.body.userId,
+            position,
+            new Date(),
+            "waiting"
+        ]
+    );
+    //add said database to 
+    //------------------------------------------------------------------//
+
+
     let estTime = 0;
-    switch (patient.service) { //beta estimated time calculation
-        case "Primary Care":
+    switch (req.body.service) { //beta estimated time calculation, update to current calculation
+        case "General Check-Up":
             estTime = position + 4;
             break;
 
-        case "Pediatrics":
+        case "Blood Draw / Lab Work":
             estTime = position + 6;
             break;
 
-        case "Urgent Care":
+        case "Specialist Consultation":
             estTime = position + 7;
             break;
 
-        case "Lab Work":
+        case "Prescription Refill":
             estTime = position + 10;
             break;
 
-        case "Other":
+        case "Urgent Care":
             estTime = position + 8;
             break;
         }
 
 
-    res.json({ //sending confirmation message and pos, estimated time and id
+    res.json({ //this will stay the same
         message: "You have been added to the Queue!",
         position: position,
         estTime: estTime,
-        id: patient.id
+        id: req.body.userId
     });
-
-    //console.log(queue)
 
 
 });
 
-app.get("/history", (req,res) => {
-    res.json(history);
+app.get("/history", async (req,res) => {
+    const [userInfo] = await db.query(
+        `SELECT s.name AS service,
+            qe.joined_at,
+            qe.status
+        FROM queueentry qe
+        JOIN queue q
+            ON qe.queue_id = q.queue_id
+        JOIN service s
+            ON q.service_id = s.service_id
+        WHERE qe.user_id = ?
+        AND qe.status IN('served','canceled')`,
+        [req.query.userId]
+    );
+
+    if(userInfo.length ===0){
+        return res.status(200).json([]);
+    }
+    res.json(userInfo);
 });
 
 
 if(require.main === module){
-    app.listen(3000,()=> { //start waiting for requests on port 3000
-        console.log("Listening on port 3000");
+    app.listen(3001,()=> { //start waiting for requests on port 3000
+        console.log("Listening on port 3001");
     });
 }
 

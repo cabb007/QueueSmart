@@ -7,21 +7,22 @@ import "react-toastify/dist/ReactToastify.css";
 function JoinQueue(){ 
 
   const [name,setName] = useState("");
-  const [service, setService] = useState("Primary Care");
+  const [service, setService] = useState("General Check-Up");
   const [position, setPosition] = useState(0);
   const [estTime, setEstTime] = useState(0);
 
   const [patientID, setPatID] = useState(null);
+  const user = JSON.parse(localStorage.getItem("user")) //local storage is stored in the browser. returns string
 
   async function handleLeaveQueue(){
     try{
-      const leaveResponse = await fetch("http://localhost:3000/leaveQueue",{
+      const leaveResponse = await fetch("http://localhost:3001/leaveQueue",{
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            id:patientID
+            userId: user.id
           })
       });
 
@@ -45,29 +46,29 @@ function JoinQueue(){
 
   async function handleJoinQueue() {
     try {
-      const response = await fetch("http://localhost:3000/joinQueue", { //sending to the express server
-        method: "POST", //sending new data
+      const response = await fetch("http://localhost:3001/joinQueue", { 
+        method: "POST",
         headers: {
-          "Content-Type": "application/json" //the data is sending json
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({ //the json body that gets sent
-          name: name,
-          service: service,
+        body: JSON.stringify({
+          userId: user.id,
+          service
         })
       });
 
-      const data = await response.json(); //recieving the "added to queue message". only works for plain text not for json
+      const data = await response.json(); //recieving
 
 
-      if (response.ok) { //if response is ok, show message, update esttime and position
+      if (response.ok) { 
         toast.success(data.message);
         setEstTime(data.estTime);
         setPosition(data.position);
         setPatID(data.id);
       } else {
-        toast.error(data.message); //otehrwise toast message
+        toast.error(data.message);
         setName("");
-        setService("Primary Care");
+        setService("General Check-Up");
       }
 
     } catch (error) {
@@ -86,7 +87,7 @@ function JoinQueue(){
         </h2>
 
         <div className="navLinks">
-    <       NavLink to="/joinqueue" className="navLink">
+            <NavLink to="/joinqueue" className="navLink">
               Join Queue
             </NavLink>
 
@@ -121,24 +122,20 @@ function JoinQueue(){
             <label>Select Service *</label>
 
             <p className="subText">
-              If your desired service is not listed, please select "Other" from the menu below.
+              Please select your desired service from the menue below.
             </p>
 
             <select className="textBox" value = {service} 
             onChange={(event) => setService(event.target.value)}>
-              <option>Primary Care</option>
-              <option>Pediatrics</option>
+              <option>General Check-Up</option>
+              <option>Blood Draw / Lab Work</option>
+              <option>Specialist Consultation</option>
+              <option>Prescription Refill</option>
               <option>Urgent Care</option>
-              <option>Lab Work</option>
-              <option>Other</option>
             </select>
 
 
-            <label>Patient Name</label>
-
-            <input type="text"className="textBox"placeholder="John Doe"
-            value={name} 
-            onChange={(event) => setName(event.target.value)}/>
+            <label>Patient Name</label><input type="text"className="textBox"value={user.name}readOnly/>
 
 
             <button className="joinButton" onClick={handleJoinQueue}>

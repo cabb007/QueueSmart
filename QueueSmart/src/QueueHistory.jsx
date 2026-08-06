@@ -7,12 +7,13 @@ import "react-toastify/dist/ReactToastify.css";
 function QueueHistory() {
 
     const [history, setHistory] = useState([]);
+    const user = JSON.parse(localStorage.getItem("user"));
 
     async function handleHistory(){
         try{
-            const response = await fetch("http://localhost:3000/history",{
-                method: "GET"
-            });
+
+            const response = await fetch(`http://localhost:3001/history?userId=${user.id}`
+            );
 
             if(!response.ok){
                 throw new Error("Failed to retrieve history");
@@ -66,13 +67,17 @@ function QueueHistory() {
 
                     <div className="historyContent">
 
-                        {history.map((appointment)=> (
-                            <div className="historyEntry" key={appointment.id}>
-                                <h3>{appointment.service}</h3>
-                                <p>{appointment.name}</p>
-                                <p>ID Number: {appointment.id}</p>
-                            </div>
-                        ))}
+                        {history.map((appointment, index) => (
+                            <div className="historyEntry" key={index}>
+                            <h3>{appointment.service}</h3>
+
+                            <p><strong>Date:</strong>{" "}
+                                {new Date(appointment.joined_at).toLocaleString()}
+                            </p>
+
+                        <p><strong>Status:</strong> {appointment.status}</p>
+                    </div>
+                    ))}
 
                     </div>
                         <div className="historyFooter">End of appointment history</div>

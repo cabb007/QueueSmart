@@ -2,7 +2,7 @@ const mysql = require("mysql2/promise"); //promise for more clean querie syntax
 
 const pool = mysql.createPool({ //creating the connection pool
     host: "clinic-queuesmart-db.mysql.database.azure.com",
-    user: "qsadmin", //not userName dummy
+    user: "qsadmin",
     password: "btwkgKWeyRE7pZm",
     database: "queuesmart",
     port: 3306,
