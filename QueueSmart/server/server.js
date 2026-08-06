@@ -88,16 +88,30 @@ function validateFields(rules, body) {
     const val = body[field]
     const str = val !== undefined && val !== null ? String(val).trim() : ''
 
+    // Required check
     if (rule.required && !str) {
       errors.push({ field, message: `${field} is required.` }); continue
     }
     if (!str) continue
+
+    // Type checks
     if (rule.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str))
       errors.push({ field, message: `${field} must be a valid email address.` })
+
+    if (rule.type === 'number' && (isNaN(Number(str)) || Number(str) < 1))
+      errors.push({ field, message: `${field} must be a positive number.` })
+
+    if (rule.type === 'string' && typeof val !== 'string')
+      errors.push({ field, message: `${field} must be a string.` })
+
+    // Length checks
     if (rule.minLength && str.length < rule.minLength)
       errors.push({ field, message: `${field} must be at least ${rule.minLength} characters.` })
+
     if (rule.maxLength && str.length > rule.maxLength)
       errors.push({ field, message: `${field} must be at most ${rule.maxLength} characters.` })
+
+    // Enum check
     if (rule.enum && !rule.enum.includes(val))
       errors.push({ field, message: `${field} must be one of: ${rule.enum.join(', ')}.` })
   }
