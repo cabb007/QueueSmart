@@ -1,9 +1,26 @@
 const express = require('express')
 const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
+const bcrypt = require('bcrypt')
+const mysql  = require('mysql2/promise')
 const { calculateWaitTime, assessSeverity } = require('./waitTimeCalculator')
 
 const app  = express()
+// ── Database connection ───────────────────────────────────────────────────────
+const db = mysql.createPool({
+  host:               'clinic-queuesmart-db.mysql.database.azure.com',
+  user:               'qsadmin',
+  password:           'btwkgKWeyRE7pZm',
+  database:           'queuesmart',
+  ssl:                { rejectUnauthorized: false },
+  waitForConnections: true,
+  connectionLimit:    10,
+})
+
+db.getConnection()
+  .then(conn => { console.log('Connected to Azure MySQL'); conn.release() })
+  .catch(err  => console.error('DB connection failed:', err.message))
+
 const PORT = 3001
 
 // ── Middleware ────────────────────────────────────────────────────────────────
@@ -240,7 +257,7 @@ app.get('/api/notifications/:userId', (req,res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // POST /api/auth/register
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   const errors = validateFields({
     name:     { required: true, minLength: 2, maxLength: 100 },
     email:    { required: true, type: 'email' },
@@ -250,23 +267,51 @@ app.post('/api/auth/register', (req, res) => {
 
   if (errors.length) return res.status(400).json({ errors })
 
-  const exists = users.find(u => u.email === req.body.email.trim().toLowerCase())
-  if (exists) return res.status(409).json({ message: 'Email already registered.' })
+  try {
+    const email = req.body.email.trim().toLowerCase()
 
-  const user = {
-    id:       uuidv4(),
-    name:     req.body.name.trim(),
-    email:    req.body.email.trim().toLowerCase(),
-    password: req.body.password,
-    role:     req.body.role,
+    // Check duplicate in DB
+    const [existing] = await db.query(
+      'SELECT user_id FROM usercredentials WHERE email = ?', [email]
+    )
+    if (existing.length)
+      return res.status(409).json({ message: 'Email already registered.' })
+
+    // Hash password with bcrypt
+    const password_hash = await bcrypt.hash(req.body.password, 10)
+    const userId        = uuidv4()
+    const profileId     = uuidv4()
+
+    // Store in DB
+    await db.query(
+      'INSERT INTO usercredentials (user_id, email, password_hash, role) VALUES (?, ?, ?, ?)',
+      [userId, email, password_hash, req.body.role]
+    )
+    await db.query(
+      'INSERT INTO userprofile (profile_id, user_id, full_name, email) VALUES (?, ?, ?, ?)',
+      [profileId, userId, req.body.name.trim(), email]
+    )
+
+    // Also keep in memory for other routes that depend on users array
+    users.push({
+      id:       userId,
+      name:     req.body.name.trim(),
+      email,
+      password: req.body.password,
+      role:     req.body.role,
+    })
+
+    return res.status(201).json({ message: 'Account created successfully.', userId })
+
+  } catch (err) {
+    console.error('Register error:', err)
+    return res.status(500).json({ message: 'Server error during registration.' })
   }
-  users.push(user)
-
-  return res.status(201).json({ message: 'Account created successfully.', userId: user.id })
 })
 
 // POST /api/auth/login
-app.post('/api/auth/login', (req, res) => {
+// POST /api/auth/login
+app.post('/api/auth/login', async (req, res) => {
   const errors = validateFields({
     email:    { required: true, type: 'email' },
     password: { required: true },
@@ -274,19 +319,55 @@ app.post('/api/auth/login', (req, res) => {
 
   if (errors.length) return res.status(400).json({ errors })
 
-  const user = users.find(
-    u => u.email === req.body.email.trim().toLowerCase() && u.password === req.body.password
-  )
-  if (!user) return res.status(401).json({ message: 'Invalid email or password.' })
+  try {
+    const email = req.body.email.trim().toLowerCase()
 
-  const token = uuidv4()
-  sessions[token] = { userId: user.id, role: user.role }
+    // Try DB first
+    const [rows] = await db.query(
+      `SELECT uc.user_id, uc.email, uc.password_hash, uc.role, up.full_name
+       FROM usercredentials uc
+       LEFT JOIN userprofile up ON uc.user_id = up.user_id
+       WHERE uc.email = ?`,
+      [email]
+    )
 
-  return res.status(200).json({
-    message: 'Login successful.',
-    token,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role },
-  })
+    if (rows.length) {
+      // DB user found — compare bcrypt hash
+      const dbUser = rows[0]
+      const match  = await bcrypt.compare(req.body.password, dbUser.password_hash)
+      if (!match)
+        return res.status(401).json({ message: 'Invalid email or password.' })
+
+      const token = uuidv4()
+      sessions[token] = { userId: dbUser.user_id, role: dbUser.role }
+
+      return res.status(200).json({
+        message: 'Login successful.',
+        token,
+        user: { id: dbUser.user_id, name: dbUser.full_name, email: dbUser.email, role: dbUser.role },
+      })
+    }
+
+    // Fall back to in-memory users (seeded admin/patient)
+    const memUser = users.find(
+      u => u.email === email && u.password === req.body.password
+    )
+    if (!memUser)
+      return res.status(401).json({ message: 'Invalid email or password.' })
+
+    const token = uuidv4()
+    sessions[token] = { userId: memUser.id, role: memUser.role }
+
+    return res.status(200).json({
+      message: 'Login successful.',
+      token,
+      user: { id: memUser.id, name: memUser.name, email: memUser.email, role: memUser.role },
+    })
+
+  } catch (err) {
+    console.error('Login error:', err)
+    return res.status(500).json({ message: 'Server error during login.' })
+  }
 })
 
 // POST /api/auth/logout

@@ -13,8 +13,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "express": "^5.2.1",
+    "mysql2": "^3.23.2",
     "react-toastify": "^11.1.0",
     "uuid": "^8.3.2"
   },
