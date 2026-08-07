@@ -2,6 +2,7 @@ const express = require('express')
 const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
 const { calculateWaitTime, assessSeverity } = require('./waitTimeCalculator')
+const db = require("./db");
 
 const app  = express()
 const PORT = 3001
@@ -381,7 +382,11 @@ app.get('/api/queue/:serviceId', (req, res) => {
   const serviceQueue = queue
     .filter(e => e.serviceId === req.params.serviceId)
     .sort((a, b) => a.position - b.position)
-    .map(e => ({ ...e, estimatedWaitMinutes: e.position * svc.duration }))
+    .map(e => ({
+    ...e,
+    serviceName: svc.name,
+    estimatedWaitMinutes: e.position * svc.duration
+}))
 
   res.status(200).json({ serviceId: req.params.serviceId, serviceName: svc.name, queue: serviceQueue })
 })
@@ -595,17 +600,357 @@ app.get('/api/history/:userId', (req, res) => {
 })
 
 // QUEUE JOIN ROUTES/FUNCTIONS
-app.post("/QueueHistory", (req,res)=> {
 
-})
-
-app.post("/leaveQueue", (req,res)=> {
-    if(queue.length ===0){
-        return res.status(400).json({message: "There are no patients in the queue"});
+/* my implememtations. there here if we need them(LIAM)
+app.post("/joinQueue", async (req,res) =>{
+    console.log("JoinQueue route hit");
+    console.log(req.body);
+    try{
+    //-------------VALIDATIONS------------//
+    const [existingQueue] = await db.query(
+        "SELECT entry_id FROM queueentry WHERE user_id = ? AND status = 'waiting'",
+        [req.body.userId]
+    );
+    if(existingQueue.length > 0){
+        return res.status(400).json({
+            message: "Already in queue. Cannot join the queue twice"
+        });
     }
-    let location = queue.findIndex(patient => patient.id === req.body.id);
+    // changing check for only service
+    if(typeof req.body.service !== "string"){
+        return res.status(400).json({message: "Not a valid service"});
+    }
+    if(!req.body.service || req.body.service.trim() === ""){
+        return res.status(400).json({message: "Empty service"});
+    }
+    const [userCheck] = await db.query(
+        "SELECT user_id FROM userprofile WHERE user_id = ?",
+        [req.body.userId]
+    )
+    if(userCheck.length === 0 ){
+        return res.status(404).json({message: "userID not found"});
+    }
+
+    //------------THIS AREA TO CHANGE FOR DATABSE UPDATE-----------------//
+    const [rows] = await db.query(
+        "SELECT service_id FROM service WHERE name = ?",
+        [req.body.service]
+    )
+    if(rows.length ===0){
+        return res.status(404).json({
+            message: "Service not found when trying to query for the service_id"
+        });
+    }
+    const serviceId = rows[0].service_id;
+    const [queueRows] = await db.query(
+        "SELECT queue_id FROM queue WHERE service_id = ?",
+        [serviceId]
+    )
+    if(queueRows.length === 0){
+        return res.status(404).json({
+            message: "Service not found when trying to find the queue_id"
+        });
+    }
+    const queueId = queueRows[0].queue_id;
+    const [countRows] = await db.query(
+        "SELECT COUNT(*) AS count FROM queueentry WHERE queue_id = ? AND status = 'waiting'",
+        [queueId]
+    )
+    const position = countRows[0].count + 1;
+    await db.query(
+        `INSERT INTO queueentry (entry_id, queue_id, user_id, position, joined_at, status)
+        VALUES (?,?,?,?,?,?)`,
+        [
+            uuidv4(),
+            queueId,
+            req.body.userId,
+            position,
+            new Date(),
+            "waiting"
+        ]
+    );
+    //add said database to 
+    //------------------------------------------------------------------//
+
+    let estTime = 0;
+    switch (req.body.service) { //beta estimated time calculation, update to current calculation
+        case "General Check-Up":
+            estTime = position + 4;
+            break;
+        case "Blood Draw / Lab Work":
+            estTime = position + 6;
+            break;
+        case "Specialist Consultation":
+            estTime = position + 7;
+            break;
+        case "Prescription Refill":
+            estTime = position + 10;
+            break;
+        case "Urgent Care":
+            estTime = position + 8;
+            break;
+        }
+
+    res.json({ //this will stay the same
+        message: "You have been added to the Queue!",
+        position: position,
+        estTime: estTime,
+        id: req.body.userId
+    });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
+    }
+
+});
+app.post("/leaveQueue", async (req,res)=> {
+    //check to make sure that the tuple we want to 'leave' the queue is in the queue
+    const [rows] = await db.query(
+        "SELECT entry_id, queue_id, position FROM queueentry WHERE user_id = ? AND status = 'waiting'",
+        [req.body.userId]
+    );
+    if(rows.length === 0 ){
+        return res.status(404).json({
+            message: "You are not in a queue so cant leave"
+        });
+    }
+    const entryId = rows[0].entry_id;
+    const queueId = rows[0].queue_id;
+    const position = rows[0].position;
+    //now we update the status to 'canceled' to signify leaving the queue
+    await db.query(
+        "UPDATE queueentry SET status = 'canceled' WHERE entry_id = ?",
+        [entryId]
+    );
     
-    if(location === -1){
-        return res.status(404).json({message: "ID could not be located in the Queue. Removal failed"})
+    await db.query(
+        "UPDATE queueentry SET position = position -1 WHERE queue_id = ? AND position > ? AND status = 'waiting'",
+        [queueId, position]
+    );
+    res.json({message: "Successfully removed from queue"});
+})
+app.get("/history", async (req,res) => {
+    const [userInfo] = await db.query(
+        `SELECT s.name AS service,
+            qe.joined_at,
+            qe.status
+        FROM queueentry qe
+        JOIN queue q
+            ON qe.queue_id = q.queue_id
+        JOIN service s
+            ON q.service_id = s.service_id
+        WHERE qe.user_id = ?
+        AND qe.status IN('served','canceled')`,
+        [req.query.userId]
+    );
+    if(userInfo.length ===0){
+        return res.status(200).json([]);
+    }
+    res.json(userInfo);
+});
+*/
+
+//-----------SERVICE ROUTES THAT INCLUDE GET ADD UPDATE DELETE
+
+//get all services
+app.get("/service", async (req,res) => {
+    try{
+        const [rows] = await db.query(
+            "SELECT * FROM service"
+        )
+        res.json(rows);
+    }catch(error){
+        console.log(error);
+        res.status(500).json({
+            message: "Database error for service get"
+        });
+    }
+});
+//adding a service
+app.post("/service", async (req,res) =>{
+    try{
+
+        //|| VERIFICATIONS||\\
+        const { name, description, duration, priority } = req.body;
+
+        const [dupe] = await db.query(
+            "SELECT service_id FROM service WHERE name = ?",
+            [name.trim()]
+        );
+
+        if(!name || name.trim() === ""){
+            return res.status(400).json({
+                message: "Invalid or empty service name"
+            });
+        }
+        if(dupe.length > 0){
+            return res.status(400).json({
+                message: "Already added to the list of services"
+            });
+        }
+        if (!description || description.trim() === "") {
+            return res.status(400).json({
+                message: "Description is required."
+            });
+        }
+
+        if (!duration || duration <= 0) {
+            return res.status(400).json({
+                message: "Duration must be greater than 0."
+            });
+        }
+
+        if (!priority || priority <= 0) {
+            return res.status(400).json({
+                message: "Priority must be greater than 0."
+            });
+        }
+        
+
+        //||INSERTION||\\
+
+        await db.query(
+            `INSERT INTO service
+            (service_id, name, description, duration, priority, created_at)
+            VALUES (?,?,?,?,?,?)`,
+            [
+                uuidv4(),
+                name.trim(),
+                description.trim(),
+                duration,
+                priority,
+                new Date()
+            ]
+        );
+        res.status(201).json({
+            message: "Successfully created new service"
+        });
+
+    }catch(error){
+        console.log(error);
+        res.status(500).json({
+            message: "Error on service post request"
+        });
+    }
+});
+//update a service
+app.put("/service/:id", async(req,res) =>{
+    try{
+        const serviceId = req.params.id;
+        const {name, description, duration, priority} = req.body;
+       
+        const [rows] = await db.query(
+        "SELECT service_id FROM service WHERE service_id = ?",
+        [serviceId]
+    );
+        //||VALIDATIONS||\\
+        if (rows.length === 0) {
+            return res.status(404).json({
+                message: "Service not found."});
+        }
+
+        if(!name || name.trim() === ""){
+            return res.status(400).json({
+                message: "Invalid or empty service name"
+            });
+        }
+
+        if (!description || description.trim() === "") {
+            return res.status(400).json({
+                message: "Description is required."
+            });
+        }
+
+        if (!duration || duration <= 0) {
+            return res.status(400).json({
+                message: "Duration must be greater than 0."
+            });
+        }
+
+        if (!priority || priority <= 0) {
+            return res.status(400).json({
+                message: "Priority must be greater than 0."
+            });
+        }
+
+        await db.query(
+            `UPDATE service
+            SET
+                name = ?,
+                description = ?,
+                duration = ?,
+                priority = ?
+            WHERE service_id = ?`,
+            [
+                name.trim(),
+                description.trim(),
+                duration,
+                priority,
+                serviceId
+            ]
+        );
+        return res.status(200).json({
+            message: "Updated information",
+            serviceId
+        });
+
+    }catch(error){
+        console.log(error);
+        res.status(500).json({
+            message: "Error on service put request"
+        });
+    }
+});
+//delete a service
+app.delete("/service/:id", async(req,res) =>{
+    try{
+        const serviceId = req.params.id;
+        const [servCheck] = await db.query(
+            "SELECT * FROM service WHERE service_id = ?",
+            [serviceId]
+        );
+        if(servCheck.length ===0){
+            return res.status(404).json({
+                message: "This service does not exist and cannot be deleted"
+            });
+        }
+
+        await db.query(
+            "DELETE FROM service WHERE service_id = ?",
+            [serviceId]
+        );
+        return res.status(200).json({
+            message: "Service Deleted"
+        });
+    }catch(error){
+        console.log(error);
+        res.status(500).json({
+            message: "Error on service delete request"
+        });
     }
 })
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(
+      `QueueSmart API running on http://localhost:${PORT}`
+    )
+  })
+}
+
+
+
+function resetData() {
+  queue.length = 0
+  history.length = 0
+  notifications.length = 0
+  patientID = 0
+}
+
+// Supports: const app = require("./server")
+module.exports = app
+
+// Supports: const { app, resetData } = require("./server")
+module.exports.app = app
+module.exports.resetData = resetData
