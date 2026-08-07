@@ -157,7 +157,7 @@ function JoinQueue() {
 
   return (
     <>
-      <div className="container">
+      <div className="joinQueuePage">
         <div className="joinCard">
 
           <div className="cardHeader">

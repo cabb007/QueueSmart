@@ -33,7 +33,7 @@ function QueueHistory() {
 
   return (
     <>
-      <div className="container">
+      <div className="queueHistoryPage">
         <div className="historyCard">
 
           <div className="cardHeader">

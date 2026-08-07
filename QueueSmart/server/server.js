@@ -798,7 +798,7 @@ app.post('/api/queue/leave', async (req, res) => {
 })
 
 // POST /api/queue/:serviceId/serve-next
-app.post('/api/queue/:serviceId/serve-next', (req, res) => {
+app.post('/api/queue/:serviceId/serve-next', async (req, res) => {
   try {
     const serviceId = req.params.serviceId
 
@@ -808,84 +808,83 @@ app.post('/api/queue/:serviceId/serve-next', (req, res) => {
 
     if (!svc) {
       return res.status(404).json({
-        message: 'Service not found.',
+        message: 'Service not found.'
       })
     }
 
-    const serviceQueue = queue
-      .filter(entry => entry.serviceId === serviceId)
-      .sort((a, b) => a.position - b.position)
-
-    if (serviceQueue.length === 0) {
-      return res.status(400).json({
-        message: 'Queue is empty.',
-      })
-    }
-
-    const nextPatient = serviceQueue[0]
-
-    const nextPatientIndex = queue.findIndex(
-      entry => entry.id === nextPatient.id
+    // Find the open queue for this service
+    const [queueRows] = await db.query(
+      `SELECT queue_id FROM queue WHERE service_id = ? AND status = 'open' LIMIT 1`,
+      [serviceId]
     )
 
-    queue.splice(nextPatientIndex, 1)
+    if (queueRows.length === 0) {
+      return res.status(404).json({
+        message: 'Queue not found.'
+      })
+    }
 
-    nextPatient.status = 'served'
-    nextPatient.position = 0
+    const queueId = queueRows[0].queue_id
 
-    const servedNotification = createNotification(
-      nextPatient.userId,
-      nextPatient.serviceId,
+    // Find the first waiting patient
+    const [entryRows] = await db.query(
+      `SELECT entry_id, user_id, position, joined_at FROM queueentry WHERE queue_id = ? AND status = 'waiting' ORDER BY position ASC LIMIT 1`,
+      [queueId]
+    )
+
+    if (entryRows.length === 0) {
+      return res.status(400).json({
+        message: 'Queue is empty.'
+      })
+    }
+
+    const nextPatient = entryRows[0]
+
+    // Mark first patient as served
+    await db.query(
+      `UPDATE queueentry SET status = 'served' WHERE entry_id = ?`,
+      [nextPatient.entry_id]
+    )
+
+    // Notify served patient
+    const servedNotification = await createNotification(
+      nextPatient.user_id,
+      serviceId,
       'served',
       `It is now your turn for ${svc.name}.`,
       {
         estimatedWaitMinutes: 0,
-        severityCategory: 'N/A',
+        severityCategory: 'N/A'
       }
     )
 
-    history.push({
-      id: uuidv4(),
-      userId: nextPatient.userId,
-      serviceId,
-      serviceName: svc.name,
-      joinedAt: nextPatient.joinedAt,
-      servedAt: new Date().toISOString(),
-      outcome: 'served',
-    })
+    // Move everyone else forward
+    await db.query(
+      `UPDATE queueentry SET position = position - 1 WHERE queue_id = ? AND status = 'waiting' AND position > ?`,
+      [queueId, nextPatient.position]
+    )
+
+    const [remainingQueue] = await db.query(
+      `SELECT entry_id, queue_id, user_id, position, joined_at, status FROM queueentry WHERE queue_id = ? AND status = 'waiting' ORDER BY position ASC`,
+      [queueId]
+    )
 
     const createdNotifications = []
 
-    const remainingQueue = queue
-      .filter(entry => entry.serviceId === serviceId)
-      .sort((a, b) => a.position - b.position)
-
-    remainingQueue.forEach((entry, index) => {
-      const previousStatus = entry.status
-
-      entry.position = index + 1
-
+    for (const entry of remainingQueue) {
       const waitTimeData = calculateWaitTime(
         entry.position,
         svc.duration,
-        entry.vitals || {}
+        {}
       )
 
-      const newStatus =
+      if (
         entry.position <= 2 ||
         waitTimeData.estimatedWaitMinutes <= 15
-          ? 'almost ready'
-          : 'waiting'
-
-      entry.status = newStatus
-
-      if (
-        previousStatus === 'waiting' &&
-        newStatus === 'almost ready'
       ) {
-        const notification = createNotification(
-          entry.userId,
-          entry.serviceId,
+        const notification = await createNotification(
+          entry.user_id,
+          serviceId,
           'almost_ready',
           `You are almost ready for ${svc.name}. Your current queue position is ${entry.position}.`,
           waitTimeData
@@ -893,21 +892,22 @@ app.post('/api/queue/:serviceId/serve-next', (req, res) => {
 
         createdNotifications.push(notification)
       }
-    })
+    }
 
     return res.status(200).json({
       message: 'Next user served.',
       served: nextPatient,
       servedNotification,
       notifications: createdNotifications,
-      queue: remainingQueue,
+      queue: remainingQueue
     })
+
   } catch (error) {
     console.error('Serve-next route error:', error)
 
     return res.status(500).json({
       message: 'Unable to serve the next user.',
-      error: error.message,
+      error: error.message
     })
   }
 })

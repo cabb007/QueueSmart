@@ -15,19 +15,21 @@ body {
     background-color: #f3f4f6;
 }
 
-.container {
+.queueHistoryPage {
     width: 100%;
     min-height: calc(100vh - 73px);
     display: flex;
     justify-content: center;
     align-items: flex-start;
     padding: 32px 16px;
+    box-sizing: border-box;
     background-color: #f3f4f6;
 }
-
 .historyCard {
-    width: 100%;
+    width: 90%;
     max-width: 900px;
+    margin: 0 auto;
+
     background-color: white;
     border-radius: 15px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
@@ -55,15 +57,16 @@ body {
 
 .historyContent {
     width: 100%;
-    padding: 30px;
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
+    padding: 20px;
+    box-sizing: border-box;
 }
 
 .historyEntry {
     width: 100%;
     padding: 20px;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+
     border-radius: 12px;
     border: 1px solid #dbeafe;
     background-color: #f8fafc;
