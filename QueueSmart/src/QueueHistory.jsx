@@ -7,9 +7,12 @@ function QueueHistory() {
 
   const [history, setHistory] = useState([]);
 
+  const storedUser = JSON.parse( localStorage.getItem("user") || "null" );
+  const userId = storedUser?.id;
+
   async function handleHistory() {
     try {
-      const response = await fetch("http://localhost:3000/history", {
+      const response = await fetch(`http://localhost:3001/api/history/${userId}`, {
         method: "GET"
       });
 
@@ -18,7 +21,7 @@ function QueueHistory() {
       }
 
       const data = await response.json();
-      setHistory(data);
+      setHistory(data.history || []);
     } catch (error) {
       console.log(error);
     }

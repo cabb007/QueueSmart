@@ -4,12 +4,12 @@ const express = require('express')
 const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
 const bcrypt = require('bcrypt')
-const mysql  = require('mysql2/promise')
+//const mysql  = require('mysql2/promise')
 const { calculateWaitTime, assessSeverity } = require('./waitTimeCalculator')
 
 const app  = express()
 // ── Database connection ───────────────────────────────────────────────────────
-const db = mysql.createPool({
+/*db = mysql.createPool({
   host:               'clinic-queuesmart-db.mysql.database.azure.com',
   user:               'qsadmin',
   password:           'btwkgKWeyRE7pZm',
@@ -17,7 +17,7 @@ const db = mysql.createPool({
   ssl:                { rejectUnauthorized: false },
   waitForConnections: true,
   connectionLimit:    10,
-})
+})*/
 
 db.getConnection()
   .then(conn => { console.log('Connected to Azure MySQL'); conn.release() })
@@ -33,10 +33,18 @@ app.use(express.json())
 const users = []
 users.push({ id: uuidv4(), name: 'Admin User',  email: 'admin@clinic.com',  password: 'admin123',   role: 'admin'   })
 users.push({ id: uuidv4(), name: 'Sarah Jones', email: 'sarah@clinic.com',  password: 'patient123', role: 'patient' })
+users.push({ id: uuidv4(), name: 'James Okonkwo', email: 'jamesok@clinic.com',  password: 'patient1234', role: 'patient' })
+users.push({ id: uuidv4(), name: 'Linda Pham', email: 'linpham@clinic.com',  password: 'patient12345', role: 'patient' })
 
 //for temp dynamic user info for queue calculation
 const sarahUser = users.find(
   user => user.email === 'sarah@clinic.com'
+);
+const jamesUser = users.find(
+  user => user.email === 'jamesok@clinic.com'
+);
+const lindaUser = users.find(
+  user => user.email === 'linpham@clinic.com'
 );
 
 const sessions = {}
@@ -66,18 +74,32 @@ let queue = [
     closeNotificationSent: false },
   { id: 'q2', 
     serviceId: 's1', 
-    userId: 'u3', 
-    name: 'James Okonkwo',
+    userId: jamesUser.id, 
+    name: jamesUser.name,
     joinedAt: new Date().toISOString(),
     position: 2, 
-    status: 'waiting' },
+    status: 'waiting',
+    vitals : {
+      bodyTemp: 98.6,
+      painLevel: 2,
+      sysBP: 120,
+      diaBP: 80,
+    },
+    closeNotificationSent: false },
   { id: 'q3', 
     serviceId: 's1', 
-    userId: 'u4', 
-    name: 'Linda Pham',   
+    userId: lindaUser.id, 
+    name: lindaUser.name,   
     joinedAt: new Date().toISOString(), 
     position: 1, 
-    status: 'waiting' },
+    status: 'waiting',
+    vitals : {
+      bodyTemp: 98.6,
+      painLevel: 2,
+      sysBP: 120,
+      diaBP: 80,
+    },
+    closeNotificationSent: false },
 ]
 
 const history = [];
@@ -138,9 +160,9 @@ function validateFields(rules, body) {
 }
 
 // Notications Handling-----------------------------------------------------------
-function createNotification(userId,serviceId,type,message,waitTimeData = null){
+async function createNotification(userId,serviceId,type,message,waitTimeData = null){
   const notification = {
-    id: uuidv4(),
+    notificationId: uuidv4(),
     userId,
     serviceId,
     type,
@@ -152,7 +174,18 @@ function createNotification(userId,serviceId,type,message,waitTimeData = null){
     }),
   }
 
-  notifications.push(notification)
+  const sql = `
+    INSERT INTO notification
+    (notification_id, user_id, message, created_at, status)
+    VALUES (?, ?, ?, NOW(), ?)
+  `;
+
+  await db.query(sql, [
+    notification.notificationId,
+    notification.userId,
+    notification.message,
+    "sent"
+  ])
 
   console.log(
     `[Notification] User ${userId} | ${type}: ${message}`
@@ -161,7 +194,8 @@ function createNotification(userId,serviceId,type,message,waitTimeData = null){
   return notification
 }
 
-function checkCloseToFront(entry,service) {
+async function checkCloseToFront(entry,service) {
+ 
   const waitTimeData = calculateWaitTime(
     entry.position,
     service.duration,
@@ -174,9 +208,9 @@ function checkCloseToFront(entry,service) {
     entry.closeNotificationSent = true
 
     const message = 
-    waitTimeData.estimatedWaitMinutes === 0
-      ? `You are next for ${service.name}. Please be ready.`
-      : `You are close to being served for ${service.name}. Your estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`
+      waitTimeData.estimatedWaitMinutes === 0
+        ? `You are next for ${service.name}. Please be ready.`
+        : `You are close to being served for ${service.name}. Your estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`
 
     return createNotification(
     entry.userId,
@@ -191,7 +225,7 @@ function checkCloseToFront(entry,service) {
 }
 
 //create a notification based on queue updates
-function updateQueueEntryStatus(entry, service) {
+async function updateQueueEntryStatus(entry, service) {
   const waitTimeData = calculateWaitTime(
     entry.position,
     service.duration,
@@ -235,21 +269,79 @@ function updateQueueEntryStatus(entry, service) {
   }
 }
 
-//notification routing
+async function notificationViewed(notificationId) {
+  const [result] = await db.query( 
+    `UPDATE notification SET status = 'viewed' WHERE notification_id = ? AND status = 'sent'`, [notificationId]);
+  return result.affectedRows > 0;
+}
+
+//notification routing ----------------------------------------------------------
 
 //notification retrieval
-app.get('/api/notifications/:userId', (req,res) => {
-  const userNotifications = notifications.filter(
-      notification => notification.userId === req.params.userId
-    ).sort(
-      (a,b)=>
-        new Date(b.createdAt) - new Date(a.createdAt)
-    )
+app.get('/api/notifications/:userId', async (req,res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT * FROM notification WHERE user_id = ? ORDER BY created_at DESC`,
+      [req.params.userId]
+    );
 
-  return res.status(200).json({
-    notifications: userNotifications,
-  })
+    res.status(200).json({
+      notifications: rows
+    })
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      error: "DB error"
+    });
+
+  }
 })
+
+//notification sent -> viewed check routes
+app.patch("/api/notifications/:notificationId/view", async(req,res) =>{
+  try {
+    const success = await notificationViewed(req.params.notificationId);
+
+    if (!success) {
+      return res.status(404).json({
+        message: "Notification not found or already viewed"
+      });
+    }
+
+    res.status(200).json({
+      message: "Notification viewed"
+    });
+
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: "DB error"
+    });
+  }
+});
+
+app.patch('/api/notifications/:userId/viewed', async (req, res) => {
+  try {
+    await db.query(
+      `UPDATE notification
+       SET status = 'viewed'
+       WHERE user_id = ?
+       AND status = 'sent'`,
+      [req.params.userId]
+    );
+
+    res.status(200).json({
+      message: 'Notifications viewed'
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: 'DB error'
+    });
+  }
+});
 
 
 
@@ -484,7 +576,7 @@ app.get('/api/queue/:serviceId', (req, res) => {
 })
 
 // POST /api/queue/:serviceId/join
-app.post('/api/queue/:serviceId/join', (req, res) => {
+app.post('/api/queue/:serviceId/join', async (req, res) => {
   const svc = services.find(s => s.id === req.params.serviceId)
 
   if (!svc)                    return res.status(404).json({ message: 'Service not found.' })
@@ -493,10 +585,40 @@ app.post('/api/queue/:serviceId/join', (req, res) => {
   if (!req.body.userId || !req.body.name)
     return res.status(400).json({ message: 'userId and name are required.' })
 
-  const alreadyIn = queue.find(e => e.serviceId === req.params.serviceId && e.userId === req.body.userId)
-  if (alreadyIn) return res.status(409).json({ message: 'You are already in this queue.' })
+  //this uses an array not the db  
+  //const position = queue.filter(queueEntry => queueEntry.serviceId === req.params.serviceId).length + 1
 
-  const position = queue.filter(queueEntry => queueEntry.serviceId === req.params.serviceId).length + 1
+  //find queue
+  const [queueRows] = await db.query(
+    `SELECT queue_id FROM queue WHERE service_id = ? AND status = 'open' LIMIT 1`,
+    [req.params.serviceId]
+  );
+
+  if (queueRows.length === 0) {
+    return res.status(404).json({
+      message: 'No active queue found'
+    });
+  }
+
+  const queueId = queueRows[0].queue_id;
+
+  //check if user in queue
+  const [alreadyIn] = await db.query(
+    `SELECT entry_id FROM queueentry WHERE queue_id = ? AND user_id = ? AND status = 'waiting'`, [queueId, req.body.userId]
+  );
+
+  if(alreadyIn.length > 0) {
+    return res.status(409).json({
+      message: 'Already in queue'
+    });
+  }
+
+  //determine next position from db data
+  const [positionRows] = await db.query(
+    `SELECT COALESCE(MAX(position), 0) + 1 AS nextPosition FROM queueentry WHERE queue_id = ? AND status = 'waiting'`, [queueId]
+  );
+
+  const position = positionRows[0].nextPosition;
 
   const vitals = req.body.vitals || {}
 
@@ -513,8 +635,22 @@ app.post('/api/queue/:serviceId/join', (req, res) => {
     closeNotificationSent: false,
   }
 
-  //add to queue
-  queue.push(entry)
+  // queue.push is pushing to an array not the db
+  //queue.push(entry)
+
+  //add to queue in db
+  await db.query(
+    `INSERT INTO queueentry
+     (entry_id, queue_id, user_id, position, joined_at, status)
+     VALUES (?, ?, ?, ?, NOW(), 'waiting')`,
+    [
+        entry.id,
+        queueId,
+        entry.userId,
+        entry.position
+    ]
+  );
+
   //calculate wait time
   const waitTimeData = calculateWaitTime(
     entry.position,
@@ -522,7 +658,7 @@ app.post('/api/queue/:serviceId/join', (req, res) => {
     entry.vitals
   )
 
-  const joinedNotification = createNotification(
+  const joinedNotification = await createNotification(
   entry.userId,
   entry.serviceId,
   'queue_joined',

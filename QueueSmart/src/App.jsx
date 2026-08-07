@@ -147,6 +147,32 @@ function PatientLayout({ children }) {
     return new Date(dateString).toLocaleString()
   }
 
+  useEffect(() => {
+    if(!notificationsOpen) {
+      return;
+    }
+
+    async function markViewed() {
+      try {
+        await fetch (
+          `http://localhost:3001/api/notifications/${userId}/viewed`,
+          {
+            method: "PATCH",
+          }
+        );
+
+        setNotifications(current => current.map(notification => ({
+          ...notification,
+          status: "viewed",
+        })));
+      } catch (err) {
+        console.error("Unable to mark notification as viewed", err);
+      }
+    }
+
+    markViewed();
+  }, [notificationsOpen, userId]);
+
 
 
   return (
