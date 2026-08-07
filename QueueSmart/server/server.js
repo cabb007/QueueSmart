@@ -252,7 +252,7 @@ async function updateQueueEntryStatus(entry, service) {
     previousStatus === 'waiting' &&
     newStatus === 'almost_ready'
   ) {
-    notification = createNotification(
+    notification = await createNotification(
       entry.userId,
       entry.serviceId,
       'almost_ready',
@@ -772,6 +772,18 @@ app.post('/api/queue/leave', async (req, res) => {
       [entry.queue_id, entry.position]
     )
 
+    const service = services.find(
+      service => service.id === entry.service_id
+    )
+
+    const leaveNotification = await createNotification(
+      userId,
+      entry.service_id,
+      'queue_left',
+      `You left the current queue.`,
+      null
+    )
+
     return res.status(200).json({
       message: 'Left queue successfully.'
     })
@@ -937,11 +949,11 @@ app.get('/api/history/:userId', async (req, res) => {
 });
 
 // QUEUE JOIN ROUTES/FUNCTIONS
-app.post("/QueueHistory", (req,res)=> {
+/*app.post("/QueueHistory", (req,res)=> {
 
 })
 
-app.post("/leaveQueue", (req,res)=> {
+app.post("/leaveQueue", (req,res)=> {             Old route that doesn't call to DB
     if(queue.length ===0){
         return res.status(400).json({message: "There are no patients in the queue"});
     }
@@ -959,7 +971,7 @@ app.post("/leaveQueue", (req,res)=> {
     console.log(queue)
 });
 
-/*app.post("/joinQueue", (req,res) =>{              Old route that doesn't call to DB
+app.post("/joinQueue", (req,res) =>{              Old route that doesn't call to DB
 
 
     // Ensuring we have strings before calling string methods like trim() or length. unit test adjustment
