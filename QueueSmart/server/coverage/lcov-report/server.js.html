@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">81.25% </span>
+                <span class="strong">77.7% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>221/272</span>
+                <span class='fraction'>223/287</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">72.41% </span>
+                <span class="strong">69.49% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>42/58</span>
+                <span class='fraction'>41/59</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">79.5% </span>
+                <span class="strong">75.67% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>194/244</span>
+                <span class='fraction'>196/259</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -775,7 +775,32 @@
 <a name='L710'></a><a href='#L710'>710</a>
 <a name='L711'></a><a href='#L711'>711</a>
 <a name='L712'></a><a href='#L712'>712</a>
-<a name='L713'></a><a href='#L713'>713</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
+<a name='L713'></a><a href='#L713'>713</a>
+<a name='L714'></a><a href='#L714'>714</a>
+<a name='L715'></a><a href='#L715'>715</a>
+<a name='L716'></a><a href='#L716'>716</a>
+<a name='L717'></a><a href='#L717'>717</a>
+<a name='L718'></a><a href='#L718'>718</a>
+<a name='L719'></a><a href='#L719'>719</a>
+<a name='L720'></a><a href='#L720'>720</a>
+<a name='L721'></a><a href='#L721'>721</a>
+<a name='L722'></a><a href='#L722'>722</a>
+<a name='L723'></a><a href='#L723'>723</a>
+<a name='L724'></a><a href='#L724'>724</a>
+<a name='L725'></a><a href='#L725'>725</a>
+<a name='L726'></a><a href='#L726'>726</a>
+<a name='L727'></a><a href='#L727'>727</a>
+<a name='L728'></a><a href='#L728'>728</a>
+<a name='L729'></a><a href='#L729'>729</a>
+<a name='L730'></a><a href='#L730'>730</a>
+<a name='L731'></a><a href='#L731'>731</a>
+<a name='L732'></a><a href='#L732'>732</a>
+<a name='L733'></a><a href='#L733'>733</a>
+<a name='L734'></a><a href='#L734'>734</a>
+<a name='L735'></a><a href='#L735'>735</a>
+<a name='L736'></a><a href='#L736'>736</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-yes">2x</span>
@@ -1463,7 +1488,28 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1487,7 +1533,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span></td><td class="text"><pre class="prettyprint lang-js">const express = require('express')
+<span class="cline-any cline-yes">2x</span></td><td class="text"><pre class="prettyprint lang-js">require('dotenv').config()
+const db = require('./db')
+const express = require('express')
 const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
 const { calculateWaitTime, assessSeverity } = require('./waitTimeCalculator')
@@ -2174,8 +2222,29 @@ app.post("/joinQueue", (req,res) =&gt;{
 &nbsp;
 });
 &nbsp;
-app.get("/history", (req,res) =&gt; {
-    res.json(history);
+app.get('/api/db-queues', <span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const [rows] = <span class="cstat-no" title="statement not covered" >await db.query('SELECT * FROM queue')</span>
+<span class="cstat-no" title="statement not covered" >    res.json(rows)</span>
+  } catch (error) {
+<span class="cstat-no" title="statement not covered" >    console.error('DB Error:', error)</span>
+<span class="cstat-no" title="statement not covered" >    res.status(500).json({ error: error.message })</span>
+  }
+})
+app.get('/api/db-entries', <span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const [rows] = <span class="cstat-no" title="statement not covered" >await db.query('SELECT * FROM QueueEntry');</span>
+<span class="cstat-no" title="statement not covered" >    res.json(rows);</span>
+  } catch (error) {
+<span class="cstat-no" title="statement not covered" >    try {</span>
+      // Fallback in case table name in MySQL is lowercase
+      const [rows] = <span class="cstat-no" title="statement not covered" >await db.query('SELECT * FROM queue_entry');</span>
+<span class="cstat-no" title="statement not covered" >      res.json(rows);</span>
+    } catch (err) {
+<span class="cstat-no" title="statement not covered" >      console.error('DB Error:', err);</span>
+<span class="cstat-no" title="statement not covered" >      res.status(500).json({ error: err.message });</span>
+    }
+  }
 });
 &nbsp;
 // ── Start ─────────────────────────────────────────────────────────────────────
@@ -2206,7 +2275,7 @@ module.exports.resetData = resetData</pre></td></tr></table></pre>
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-07-25T04:05:35.654Z
+                at 2026-08-05T21:45:37.747Z
             </div>
         <script src="prettify.js"></script>
         <script>
