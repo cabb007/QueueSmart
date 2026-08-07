@@ -563,16 +563,67 @@ app.patch('/api/services/:id/toggle', (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // GET /api/queue/:serviceId
-app.get('/api/queue/:serviceId', (req, res) => {
-  const svc = services.find(service => service.id === req.params.serviceId)
-  if (!svc) return res.status(404).json({ message: 'Service not found.' })
+app.get('/api/queue/:serviceId', async (req, res) => {
+  try {
+    const svc = services.find(
+      service => service.id === req.params.serviceId
+    )
 
-  const serviceQueue = queue
-    .filter(e => e.serviceId === req.params.serviceId)
-    .sort((a, b) => a.position - b.position)
-    .map(e => ({ ...e, estimatedWaitMinutes: e.position * svc.duration }))
+    if (!svc) {
+      return res.status(404).json({
+        message: 'Service not found.'
+      })
+    }
 
-  res.status(200).json({ serviceId: req.params.serviceId, serviceName: svc.name, queue: serviceQueue })
+    const [queueRows] = await db.query(
+      `SELECT queue_id
+       FROM queue
+       WHERE service_id = ?
+       AND status = 'open'
+       LIMIT 1`,
+      [req.params.serviceId]
+    )
+
+    if (queueRows.length === 0) {
+      return res.status(404).json({
+        message: 'Queue not found.'
+      })
+    }
+
+    const queueId = queueRows[0].queue_id
+
+    const [entries] = await db.query(
+      `SELECT *
+       FROM queueentry
+       WHERE queue_id = ?
+       AND status = 'waiting'
+       ORDER BY position ASC`,
+      [queueId]
+    )
+
+    const serviceQueue = entries.map(entry => ({
+      ...entry,
+      estimatedWaitMinutes:
+        calculateWaitTime(
+          entry.position,
+          svc.duration,
+          {}
+        ).estimatedWaitMinutes
+    }))
+
+    return res.status(200).json({
+      serviceId: req.params.serviceId,
+      serviceName: svc.name,
+      queue: serviceQueue
+    })
+
+  } catch (error) {
+    console.error(error)
+
+    return res.status(500).json({
+      message: 'Unable to retrieve queue.'
+    })
+  }
 })
 
 // POST /api/queue/:serviceId/join
@@ -678,14 +729,12 @@ app.post('/api/queue/:serviceId/join', async (req, res) => {
 })
 
 // DELETE /api/queue/:serviceId/leave
-app.delete('/api/queue/:serviceId/leave', (req, res) => {
+app.delete('/api/queue/:serviceId/leave', async (req, res) => {
+  try {
   const { userId } = req.body
   if (!userId) return res.status(400).json({ message: 'userId is required.' })
-
-  const idx = queue.findIndex(e => e.serviceId === req.params.serviceId && e.userId === userId)
-  if (idx === -1) return res.status(404).json({ message: 'You are not in this queue.' })
-
-  const [removed] = queue.splice(idx, 1)
+  
+  /*const [removed] = queue.splice(idx, 1)              This code uses the array instead of the DB
   queue
     .filter(e => e.serviceId === req.params.serviceId)
     .sort((a, b) => a.position - b.position)
@@ -699,9 +748,46 @@ app.delete('/api/queue/:serviceId/leave', (req, res) => {
     joinedAt:    removed.joinedAt,
     servedAt:    null,
     outcome:     'left_queue',
+  })*/
+
+  const [queueRows] = await db.query(
+    `SELECT queue_id FROM queue WHERE service_id = ? AND status = 'open' LIMIT 1`,[req.params.serviceId]
+  )
+
+  if(queueRows.length===0){
+    return res.status(404).json({
+      message:'no queue found'
   })
+  }
+
+  const queueId = queueRows[0].queue_id
+
+  const [entryRows] = await db.query(
+    `SELECT entry_id, position FROM queueentry WHERE queue_id = ? AND user_id = ? AND status = 'waiting' LIMIT 1`, [queueId, userId]
+  )
+
+  if(entryRows.length === 0){
+    return res.status(404).json({
+      message: 'you are not in the queue'
+    })
+  }
+
+  const entry = entryRows[0]
+
+  await db.query(`UPDATE queueentry SET status = 'cancelled' WHERE entry_id = ?`, [entry.entry_id]);
+
+  await db.query(
+    `UPDATE queueentry SET position = position - 1 WHERE queue_id = ? AND status = 'waiting' AND position > ?`, [queueId,entry.position]
+  )
 
   res.status(200).json({ message: 'Left queue successfully.' })
+} catch (err) {
+  console.error('Error leaving queue,', err)
+
+  return res.status(500).json({
+    message: 'Unable to leave queue'
+  })
+}
 })
 
 // POST /api/queue/:serviceId/serve-next
@@ -820,12 +906,40 @@ app.post('/api/queue/:serviceId/serve-next', (req, res) => {
 })
 
 // GET /api/history/:userId
-app.get('/api/history/:userId', (req, res) => {
-  const userHistory = history
-    .filter(h => h.userId === req.params.userId)
-    .sort((a, b) => new Date(b.joinedAt) - new Date(a.joinedAt))
-  res.status(200).json({ history: userHistory })
-})
+app.get('/api/history/:userId', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `
+      SELECT
+        qe.entry_id,
+        qe.queue_id,
+        qe.user_id,
+        qe.position,
+        qe.joined_at,
+        qe.status,
+        q.service_id
+      FROM queueentry qe
+      JOIN queue q
+        ON qe.queue_id = q.queue_id
+      WHERE qe.user_id = ?
+        AND qe.status IN ('served', 'cancelled')
+      ORDER BY qe.joined_at DESC
+      `,
+      [req.params.userId]
+    );
+
+    return res.status(200).json({
+      history: rows
+    });
+
+  } catch (error) {
+    console.error('History retrieval error:', error);
+
+    return res.status(500).json({
+      message: 'Unable to retrieve history'
+    });
+  }
+});
 
 // QUEUE JOIN ROUTES/FUNCTIONS
 app.post("/QueueHistory", (req,res)=> {
@@ -850,7 +964,7 @@ app.post("/leaveQueue", (req,res)=> {
     console.log(queue)
 });
 
-app.post("/joinQueue", (req,res) =>{
+/*app.post("/joinQueue", (req,res) =>{              Old route that doesn't call to DB
 
 
     // Ensuring we have strings before calling string methods like trim() or length. unit test adjustment
@@ -916,7 +1030,7 @@ app.post("/joinQueue", (req,res) =>{
     //console.log(queue)
 
 
-});
+}); */
 
 app.get('/api/db-queues', async (req, res) => {
   try {

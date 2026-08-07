@@ -51,12 +51,13 @@ const PatientDashboard = () => {
         const historyData = await historyResponse.json();
 
         const matchingEntry = queueData.queue.find(
-          (entry) => entry.userId === storedUser.id
+          entry => entry.user_id === storedUser.id
         );
 
         setQueueEntry(matchingEntry || null);
         setQueueHistory(historyData.history || []);
         setError("");
+        
       } catch (requestError) {
         console.error(
           "Unable to load patient dashboard:",
