@@ -57,7 +57,7 @@ const PatientDashboard = () => {
         setQueueEntry(matchingEntry || null);
         setQueueHistory(historyData.history || []);
         setError("");
-        
+
       } catch (requestError) {
         console.error(
           "Unable to load patient dashboard:",
@@ -300,8 +300,7 @@ const PatientDashboard = () => {
 
                     <div className="bg-blue-50 rounded-xl p-3.5 border border-blue-100">
                       <p className="text-sm text-slate-700">
-                        {queueEntry.serviceName ||
-                          queueEntry.serviceId}
+                        {queueEntry.service_id}
                       </p>
                     </div>
                   </div>
@@ -313,7 +312,7 @@ const PatientDashboard = () => {
 
                     <p className="text-sm text-slate-700">
                       {new Date(
-                        queueEntry.joinedAt
+                        queueEntry.joined_at
                       ).toLocaleString()}
                     </p>
                   </div>
@@ -387,18 +386,17 @@ const PatientDashboard = () => {
                 <div className="divide-y divide-blue-50">
                   {queueHistory.map((historyEntry) => (
                     <div
-                      key={historyEntry.id}
+                      key={historyEntry.entry_id}
                       className="py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 first:pt-0 last:pb-0"
                     >
                       <div>
                         <h4 className="text-sm font-semibold text-slate-800">
-                          {historyEntry.serviceName ||
-                            historyEntry.serviceId}
+                          {historyEntry.service_id}
                         </h4>
 
                         <p className="text-xs text-slate-500 mt-0.5 capitalize">
                           Outcome:{" "}
-                          {historyEntry.outcome.replace(
+                          {historyEntry.status.replace(
                             "_",
                             " "
                           )}
@@ -406,13 +404,7 @@ const PatientDashboard = () => {
                       </div>
 
                       <span className="text-xs text-blue-500 font-medium">
-                        {historyEntry.servedAt
-                          ? new Date(
-                              historyEntry.servedAt
-                            ).toLocaleString()
-                          : new Date(
-                              historyEntry.joinedAt
-                            ).toLocaleString()}
+                        {new Date(historyEntry.joined_at).toLocaleString()}
                       </span>
                     </div>
                   ))}

@@ -4,6 +4,8 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import './joinQueue.css';
 
+
+
 function JoinQueue() {
   const navigate = useNavigate()
 
@@ -26,6 +28,56 @@ function JoinQueue() {
       })
       .catch(() => setError('Could not load services.'))
   }, [])
+
+  
+
+  useEffect(() => {
+    if (!selectedSvc || !user.id) {
+      return
+    }
+
+    async function refreshQueueStatus() {
+      try {
+        const res = await fetch(
+          `http://localhost:3001/api/queue/${selectedSvc}`
+        )
+
+        if(!res.ok){
+          return
+        }
+
+        const data = await res.json()
+
+        const matchingEntry = data.queue.find(entry => entry.user_id === user.id)
+        const selectedService = services.find(service => service.id === selectedSvc)
+
+        if(matchingEntry) { //if already in queue
+          setJoined(true)
+          setQueueEntry(matchingEntry)
+        } else {
+
+          setJoined(false)
+
+          const nextPosition = data.queue.length + 1
+
+          setQueueEntry({
+          position: nextPosition,
+          estimatedWaitMinutes:
+            (nextPosition-1) * (selectedService?.duration || 0) + 5
+        })
+        }
+  
+      } catch (err) {
+        console.error("Could not refresh queue status,", err)
+      }
+    }
+
+    refreshQueueStatus()
+
+    const intervalId = setInterval(refreshQueueStatus, 5000)
+
+    return () => clearInterval(intervalId)
+  }, [joined, selectedSvc, user.id])
 
   async function handleJoin() {
     if (!selectedSvc) return
@@ -62,7 +114,7 @@ function JoinQueue() {
     setError('')
     try {
       const res  = await fetch(`http://localhost:3001/api/queue/${selectedSvc}/leave`, {
-        method:  'DELETE',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ userId: user.id }),
       })
@@ -85,7 +137,17 @@ function JoinQueue() {
     }
   }
 
+  
+
   const svc = services.find(s => s.id === selectedSvc)
+
+  function calculateFrontendWait(position) {
+  if (!svc) {
+    return 0
+  }
+
+  return position * svc.duration
+  }
 
   function getOrdinal(n) {
     const s = ['th', 'st', 'nd', 'rd']
@@ -127,7 +189,6 @@ function JoinQueue() {
                 setQueueEntry(null)
                 setError('')
               }}
-              disabled={joined}
             >
               {services.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
@@ -137,7 +198,7 @@ function JoinQueue() {
             <label>Patient Name</label>
             <p className="subText">{user.name || 'Not logged in'}</p>
 
-            {!joined && (
+            
               <button
                 className="joinButton"
                 onClick={handleJoin}
@@ -145,15 +206,14 @@ function JoinQueue() {
               >
                 {loading ? 'Joining...' : 'Join Queue'}
               </button>
-            )}
-
+            
             <label>Estimated Wait Time</label>
             <p className="miniText">
               *Wait times and queue positions may vary for different services
             </p>
             <div className="greyBox">
               <p className="boldText">
-                {joined && queueEntry
+                {queueEntry
                   ? `${queueEntry.estimatedWaitMinutes} minutes`
                   : svc ? `~${svc.duration} minutes` : '—'}
               </p>
@@ -162,13 +222,13 @@ function JoinQueue() {
             <label>Estimated Queue Position</label>
             <div className="greyBox">
               <p className="boldText">
-                {joined && queueEntry
-                  ? `${getOrdinal(queueEntry.entry.position)} position`
+                {queueEntry
+                  ? `${getOrdinal(queueEntry.position)} position`
                   : '—'}
               </p>
             </div>
 
-            {joined && (
+            
               <button
                 className="joinButton"
                 onClick={handleLeave}
@@ -176,7 +236,7 @@ function JoinQueue() {
               >
                 {loading ? 'Leaving...' : 'Leave Queue'}
               </button>
-            )}
+            
 
           </div>
         </div>

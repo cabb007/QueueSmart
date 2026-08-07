@@ -728,8 +728,8 @@ app.post('/api/queue/:serviceId/join', async (req, res) => {
   })
 })
 
-// DELETE /api/queue/:serviceId/leave
-app.delete('/api/queue/:serviceId/leave', async (req, res) => {
+// UPDATE /api/queue/:serviceId/leave
+app.post('/api/queue/:serviceId/leave', async (req, res) => {
   try {
   const { userId } = req.body
   if (!userId) return res.status(400).json({ message: 'userId is required.' })
@@ -774,7 +774,7 @@ app.delete('/api/queue/:serviceId/leave', async (req, res) => {
 
   const entry = entryRows[0]
 
-  await db.query(`UPDATE queueentry SET status = 'cancelled' WHERE entry_id = ?`, [entry.entry_id]);
+  await db.query(`UPDATE queueentry SET status = 'canceled' WHERE entry_id = ?`, [entry.entry_id]);
 
   await db.query(
     `UPDATE queueentry SET position = position - 1 WHERE queue_id = ? AND status = 'waiting' AND position > ?`, [queueId,entry.position]
@@ -922,7 +922,7 @@ app.get('/api/history/:userId', async (req, res) => {
       JOIN queue q
         ON qe.queue_id = q.queue_id
       WHERE qe.user_id = ?
-        AND qe.status IN ('served', 'cancelled')
+        AND qe.status IN ('served', 'canceled')
       ORDER BY qe.joined_at DESC
       `,
       [req.params.userId]

@@ -37,7 +37,7 @@ export default function QueueStatus() {
         }
 
         const data         = await response.json();
-        const patientEntry = data.queue.find(entry => entry.userId === userId);
+        const patientEntry = data.queue.find(entry => entry.user_id === storedUser.id);
 
         if (!patientEntry) {
           setQueuePosition(null);
