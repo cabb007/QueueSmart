@@ -173,7 +173,9 @@ function PatientLayout({ children }) {
     markViewed();
   }, [notificationsOpen, userId]);
 
-
+  const hasUnreadNotifications = notifications.some(
+    notification => notification.status === "sent"
+  )
 
   return (
     <div>
@@ -253,6 +255,9 @@ function PatientLayout({ children }) {
                   d="M10 21h4"
                 />
               </svg>
+              {hasUnreadNotifications && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
+              )}
             </button>
 
             {notificationsOpen && (
