@@ -46,9 +46,13 @@ function QueueHistory() {
           <div className="historyContent">
             {history.map((appointment) => (
               <div className="historyEntry" key={appointment.id}>
-                <h3>{appointment.service}</h3>
-                <p>{appointment.name}</p>
-                <p>ID Number: {appointment.id}</p>
+                <h3>Service type: {appointment.service_id}</h3>
+                
+                <p>Entry ID Number: {appointment.entry_id}</p>
+
+                <p>Status: {appointment.status}</p>
+
+                <p>Joined queue at: {new Date(appointment.joined_at).toLocaleString()}</p>
               </div>
             ))}
           </div>

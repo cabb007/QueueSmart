@@ -729,65 +729,60 @@ app.post('/api/queue/:serviceId/join', async (req, res) => {
 })
 
 // UPDATE /api/queue/:serviceId/leave
-app.post('/api/queue/:serviceId/leave', async (req, res) => {
+app.post('/api/queue/leave', async (req, res) => {
   try {
-  const { userId } = req.body
-  if (!userId) return res.status(400).json({ message: 'userId is required.' })
-  
-  /*const [removed] = queue.splice(idx, 1)              This code uses the array instead of the DB
-  queue
-    .filter(e => e.serviceId === req.params.serviceId)
-    .sort((a, b) => a.position - b.position)
-    .forEach((e, i) => { e.position = i + 1 })
+    const { userId } = req.body
 
-  history.push({
-    id:          uuidv4(),
-    userId,
-    serviceId:   req.params.serviceId,
-    serviceName: services.find(s => s.id === req.params.serviceId)?.name || '',
-    joinedAt:    removed.joinedAt,
-    servedAt:    null,
-    outcome:     'left_queue',
-  })*/
+    if (!userId) {
+      return res.status(400).json({
+        message: 'userId is required.'
+      })
+    }
 
-  const [queueRows] = await db.query(
-    `SELECT queue_id FROM queue WHERE service_id = ? AND status = 'open' LIMIT 1`,[req.params.serviceId]
-  )
+    const [entryRows] = await db.query(
+      `SELECT entry_id, queue_id, position
+       FROM queueentry
+       WHERE user_id = ?
+       AND status = 'waiting'
+       LIMIT 1`,
+      [userId]
+    )
 
-  if(queueRows.length===0){
-    return res.status(404).json({
-      message:'no queue found'
-  })
-  }
+    if (entryRows.length === 0) {
+      return res.status(404).json({
+        message: 'You are not in a queue.'
+      })
+    }
 
-  const queueId = queueRows[0].queue_id
+    const entry = entryRows[0]
 
-  const [entryRows] = await db.query(
-    `SELECT entry_id, position FROM queueentry WHERE queue_id = ? AND user_id = ? AND status = 'waiting' LIMIT 1`, [queueId, userId]
-  )
+    await db.query(
+      `UPDATE queueentry
+       SET status = 'canceled'
+       WHERE entry_id = ?`,
+      [entry.entry_id]
+    )
 
-  if(entryRows.length === 0){
-    return res.status(404).json({
-      message: 'you are not in the queue'
+    await db.query(
+      `UPDATE queueentry
+       SET position = position - 1
+       WHERE queue_id = ?
+       AND status = 'waiting'
+       AND position > ?`,
+      [entry.queue_id, entry.position]
+    )
+
+    return res.status(200).json({
+      message: 'Left queue successfully.'
+    })
+
+  } catch (err) {
+    console.error('Error leaving queue:', err)
+
+    return res.status(500).json({
+      message: 'Unable to leave queue'
     })
   }
-
-  const entry = entryRows[0]
-
-  await db.query(`UPDATE queueentry SET status = 'canceled' WHERE entry_id = ?`, [entry.entry_id]);
-
-  await db.query(
-    `UPDATE queueentry SET position = position - 1 WHERE queue_id = ? AND status = 'waiting' AND position > ?`, [queueId,entry.position]
-  )
-
-  res.status(200).json({ message: 'Left queue successfully.' })
-} catch (err) {
-  console.error('Error leaving queue,', err)
-
-  return res.status(500).json({
-    message: 'Unable to leave queue'
-  })
-}
 })
 
 // POST /api/queue/:serviceId/serve-next

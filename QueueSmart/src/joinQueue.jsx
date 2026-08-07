@@ -113,7 +113,7 @@ function JoinQueue() {
     setLoading(true)
     setError('')
     try {
-      const res  = await fetch(`http://localhost:3001/api/queue/${selectedSvc}/leave`, {
+      const res  = await fetch(`http://localhost:3001/api/queue/leave`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ userId: user.id }),

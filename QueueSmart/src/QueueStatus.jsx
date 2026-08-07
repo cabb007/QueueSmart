@@ -40,9 +40,9 @@ export default function QueueStatus() {
         const patientEntry = data.queue.find(entry => entry.user_id === storedUser.id);
 
         if (!patientEntry) {
-          setQueuePosition(null);
-          setEstimatedWaitTime("");
-          setStatus("served");
+          setQueuePosition("-");
+          setEstimatedWaitTime("-");
+          setStatus("N/A");
           setError("");
           return;
         }
@@ -85,7 +85,7 @@ export default function QueueStatus() {
             <span className="inline-block px-3 py-1 bg-white/20 text-xs font-medium rounded-full mb-3">
               Live Queue Status
             </span>
-            <h1 className="text-2xl font-bold tracking-tight">Your Queue Status</h1>
+            <h1 className="text-2xl font-bold tracking-tight" style = {{color : "white"}}>Your Queue Status</h1>
             <p className="text-white/80 text-sm mt-1">
               Please stay nearby while we prepare for your visit.
             </p>
@@ -97,8 +97,8 @@ export default function QueueStatus() {
                 Current Position
               </p>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-extrabold text-slate-900">{queuePosition}</span>
-                <span className="text-sm font-medium text-slate-500">in queue</span>
+                <span className="text-5xl font-medium text-slate-900">{queuePosition}</span>
+                
               </div>
             </div>
 
@@ -106,7 +106,7 @@ export default function QueueStatus() {
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                 Estimated Wait Time
               </p>
-              <p className="text-4xl font-extrabold text-slate-900">{estimatedWaitTime}</p>
+              <p className="text-4xl font-medium text-slate-900">{estimatedWaitTime}</p>
             </div>
 
             <div className="sm:col-span-2 bg-slate-50 border border-slate-100 rounded-xl p-5">
