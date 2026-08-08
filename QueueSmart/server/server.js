@@ -773,16 +773,15 @@ app.post("/service", async (req,res) =>{
         //|| VERIFICATIONS||\\
         const { name, description, duration, priority } = req.body;
 
-        const [dupe] = await db.query(
-            "SELECT service_id FROM service WHERE name = ?",
-            [name.trim()]
-        );
-
         if(!name || name.trim() === ""){
             return res.status(400).json({
                 message: "Invalid or empty service name"
             });
         }
+        const [dupe] = await db.query(
+            "SELECT service_id FROM service WHERE name = ?",
+            [name.trim()]
+        );
         if(dupe.length > 0){
             return res.status(400).json({
                 message: "Already added to the list of services"
@@ -800,10 +799,12 @@ app.post("/service", async (req,res) =>{
             });
         }
 
-        if (!priority || priority <= 0) {
+        const validPriorities = ["low", "medium", "high"];
+
+        if (!validPriorities.includes(priority)) {
             return res.status(400).json({
-                message: "Priority must be greater than 0."
-            });
+            message: "Invalid priority."
+        });
         }
         
 
@@ -867,9 +868,11 @@ app.put("/service/:id", async(req,res) =>{
             });
         }
 
-        if (!priority || priority <= 0) {
+        const validPriorities = ["low", "medium", "high"];
+
+        if (!validPriorities.includes(priority)) {
             return res.status(400).json({
-                message: "Priority must be greater than 0."
+            message: "Invalid priority."
             });
         }
 
