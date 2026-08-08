@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 
-const EMPTY = { name: '', desc: '', duration: '', priority: 'medium' }
+const EMPTY = { name: '', description: '', duration: '', priority: 'medium' }
 
 function validate(values) {
   const errors = {}
   if (!values.name.trim())           errors.name     = 'Service name is required.'
   else if (values.name.length > 100) errors.name     = 'Max 100 characters.'
-  if (!values.desc.trim())           errors.desc     = 'Description is required.'
+  if (!values.description.trim())           errors.description     = 'Description is required.'
   if (!values.duration)              errors.duration = 'Duration is required.'
   else if (isNaN(values.duration) || Number(values.duration) < 1)
                                      errors.duration = 'Must be a positive number.'
@@ -29,20 +29,31 @@ export default function ServiceManagement() {
   const [deleteId, setDeleteId] = useState(null)
 
   // ── Fetch services from backend on mount ──
+// ── Fetch services from backend on mount ──
+  async function loadServices() {
+    try {
+        const res = await fetch("http://localhost:3001/service");
+        const data = await res.json();
+
+        setServices(data);
+        setLoading(false);
+    } catch (err) {
+        console.error(err);
+        setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    fetch('http://localhost:3001/api/services')
-      .then(res => res.json())
-      .then(data => { setServices(data.services); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
+      loadServices();
+  }, []);
 
   function openAdd() {
     setEditing(null); setValues(EMPTY); setErrors({}); setModal(true)
   }
 
   function openEdit(svc) {
-    setEditing(svc.id)
-    setValues({ name: svc.name, desc: svc.desc, duration: String(svc.duration), priority: svc.priority })
+    setEditing(svc.service_id)
+    setValues({ name: svc.name, description: svc.description, duration: String(svc.duration), priority: svc.priority })
     setErrors({}); setModal(true)
   }
 
@@ -52,54 +63,79 @@ export default function ServiceManagement() {
   }
 
   async function handleSave() {
-    const errs = validate(values)
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    const errs = validate(values);
+
+    if (Object.keys(errs).length) {
+        setErrors(errs);
+        return;
+    }
 
     try {
-      if (editing) {
-        // Update existing service
-        const res  = await fetch(`http://localhost:3001/api/services/${editing}`, {
-          method:  'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(values),
-        })
-        const data = await res.json()
-        if (res.ok) setServices(prev => prev.map(s => s.id === editing ? data.service : s))
-      } else {
-        // Create new service
-        const res  = await fetch('http://localhost:3001/api/services', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(values),
-        })
-        const data = await res.json()
-        if (res.ok) setServices(prev => [...prev, data.service])
-      }
-      setModal(false)
+        let res;
+
+        if (editing) {
+            // Update existing service
+            res = await fetch(`http://localhost:3001/service/${editing}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(values),
+            });
+        } else {
+            // Create new service
+            res = await fetch("http://localhost:3001/service", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(values),
+            });
+        }
+
+        const data = await res.json();
+
+        if (res.ok) {
+            await loadServices();
+            setModal(false);
+            alert(data.message);
+        } else {
+            alert(data.message);
+        }
+
     } catch (err) {
-      console.error('Failed to save service:', err)
+        console.error("Failed to save service:", err);
+        alert("Unable to connect to the server.");
     }
   }
-
   async function handleDelete() {
     try {
-      const res = await fetch(`http://localhost:3001/api/services/${deleteId}`, {
-        method: 'DELETE',
-      })
-      if (res.ok) setServices(prev => prev.filter(s => s.id !== deleteId))
-      setDeleteId(null)
+        const res = await fetch(`http://localhost:3001/service/${deleteId}`, {
+            method: "DELETE",
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          await loadServices();
+        } else {
+          alert(data.message);
+        }
+
+        setDeleteId(null);
+
     } catch (err) {
-      console.error('Failed to delete service:', err)
+        console.error("Failed to delete service:", err);
     }
   }
 
   async function toggleStatus(id) {
     try {
-      const res  = await fetch(`http://localhost:3001/api/services/${id}/toggle`, {
+      const res  = await fetch(`http://localhost:3001/service/${id}/toggle`, {
         method: 'PATCH',
       })
       const data = await res.json()
-      if (res.ok) setServices(prev => prev.map(s => s.id === id ? data.service : s))
+      if (res.ok) setServices(prev => prev.map(s => s.service_id === id ? data: s))
     } catch (err) {
       console.error('Failed to toggle status:', err)
     }
@@ -135,7 +171,7 @@ export default function ServiceManagement() {
 
             <div className="flex flex-col gap-4">
               {services.map(s => (
-                <div key={s.id} className="border border-gray-200 rounded-xl p-5">
+                <div key={s.service_id} className="border border-gray-200 rounded-xl p-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -144,7 +180,7 @@ export default function ServiceManagement() {
                           {s.priority}
                         </span>
                         <button
-                          onClick={() => toggleStatus(s.id)}
+                          onClick={() => toggleStatus(s.service_id)}
                           className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-colors
                                       ${s.status === 'open'
                                         ? 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -153,7 +189,7 @@ export default function ServiceManagement() {
                           {s.status === 'open' ? '● Open' : '● Closed'}
                         </button>
                       </div>
-                      <p className="text-sm text-gray-500 mb-2">{s.desc}</p>
+                      <p className="text-sm text-gray-500 mb-2">{s.description}</p>
                       <p className="text-xs text-gray-400">
                         Expected duration: <strong className="text-gray-600">{s.duration} min</strong>
                       </p>
@@ -167,7 +203,7 @@ export default function ServiceManagement() {
                         Edit
                       </button>
                       <button
-                        onClick={() => setDeleteId(s.id)}
+                        onClick={() => setDeleteId(s.service_id)}
                         className="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-300
                                    rounded-lg hover:bg-red-50 transition-colors"
                       >
@@ -223,14 +259,14 @@ export default function ServiceManagement() {
                 </label>
                 <textarea
                   placeholder="Describe what this service involves..."
-                  value={values.desc}
-                  onChange={e => set('desc', e.target.value)}
+                  value={values.description}
+                  onChange={e => set('description', e.target.value)}
                   rows={3}
                   className={`w-full px-4 py-2.5 rounded-lg text-sm border text-gray-800 outline-none
                               transition-all resize-none focus:border-[#2B4ACB] focus:ring-2 focus:ring-[#2B4ACB]/10
-                              ${errors.desc ? 'border-red-400 bg-white' : 'border-gray-300 bg-gray-50'}`}
+                              ${errors.description ? 'border-red-400 bg-white' : 'border-gray-300 bg-gray-50'}`}
                 />
-                {errors.desc && <p className="text-xs text-red-500 mt-1">⚠ {errors.desc}</p>}
+                {errors.description && <p className="text-xs text-red-500 mt-1">⚠ {errors.description}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-6">
@@ -302,7 +338,7 @@ export default function ServiceManagement() {
             <div className="px-7 py-6">
               <p className="text-sm text-gray-600 mb-6">
                 Are you sure you want to delete{' '}
-                <strong className="text-gray-800">{services.find(s => s.id === deleteId)?.name}</strong>?
+                <strong className="text-gray-800">{services.find(s => s.service_id === deleteId)?.name}</strong>?
               </p>
               <div className="flex gap-3">
                 <button

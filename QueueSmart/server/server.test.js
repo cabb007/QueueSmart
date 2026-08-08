@@ -79,6 +79,7 @@ describe("POST /api/auth/register", () => {
             .toBeDefined();
     });
 
+    const verify = await request(app).get("/service");
 
     test("rejects missing name", async () => {
 
@@ -1259,3 +1260,13 @@ describe(
 
     }
 );
+    const updated = verify.body.find(
+        s => s.service_id === service.service_id
+    );
+
+    expect(updated.name).toBe("Updated Service");
+    expect(updated.priority).toBe("high");
+
+    await request(app)
+        .delete(`/service/${service.service_id}`);
+

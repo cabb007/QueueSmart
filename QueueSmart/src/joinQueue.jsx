@@ -178,7 +178,7 @@ function JoinQueue() {
 
             <label>Select Service *</label>
             <p className="subText">
-              If your desired service is not listed, please select "Other" from the menu below.
+              Please select your desired service from the menue below.
             </p>
             <select
               className="textBox"
