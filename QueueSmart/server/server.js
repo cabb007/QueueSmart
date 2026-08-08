@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require('uuid')
 const bcrypt = require('bcrypt')
 //const mysql  = require('mysql2/promise')
 const { calculateWaitTime, assessSeverity } = require('./waitTimeCalculator')
-const db = require("./db");
+//const db = require("./db");
 
 const app  = express()
 // ── Database connection ───────────────────────────────────────────────────────
@@ -575,15 +575,8 @@ app.get('/api/queue/:serviceId', async (req, res) => {
         message: 'Service not found.'
       })
     }
-  const serviceQueue = queue
-    .filter(e => e.serviceId === req.params.serviceId)
-    .sort((a, b) => a.position - b.position)
-    .map(e => ({
-    ...e,
-    serviceName: svc.name,
-    estimatedWaitMinutes: e.position * svc.duration
-}))
 
+    // Find the open DB queue for this service
     const [queueRows] = await db.query(
       `SELECT queue_id
        FROM queue
@@ -601,6 +594,7 @@ app.get('/api/queue/:serviceId', async (req, res) => {
 
     const queueId = queueRows[0].queue_id
 
+    // Get the REAL waiting entries from the database
     const [entries] = await db.query(
       `SELECT *
        FROM queueentry
@@ -610,15 +604,24 @@ app.get('/api/queue/:serviceId', async (req, res) => {
       [queueId]
     )
 
-    const serviceQueue = entries.map(entry => ({
-      ...entry,
-      estimatedWaitMinutes:
-        calculateWaitTime(
-          entry.position,
-          svc.duration,
-          {}
-        ).estimatedWaitMinutes
-    }))
+    // Add estimated wait time to every DB entry
+    const serviceQueue = entries.map(entry => {
+      const waitTimeData = calculateWaitTime(
+        entry.position,
+        svc.duration,
+        {}
+      )
+
+      return {
+        ...entry,
+        service_id: req.params.serviceId,
+        serviceName: svc.name,
+        estimatedWaitMinutes:
+          waitTimeData.estimatedWaitMinutes,
+        severityCategory:
+          waitTimeData.severityCategory
+      }
+    })
 
     return res.status(200).json({
       serviceId: req.params.serviceId,
@@ -627,7 +630,10 @@ app.get('/api/queue/:serviceId', async (req, res) => {
     })
 
   } catch (error) {
-    console.error(error)
+    console.error(
+      'Queue retrieval error:',
+      error
+    )
 
     return res.status(500).json({
       message: 'Unable to retrieve queue.'
@@ -1107,7 +1113,7 @@ app.get('/api/db-entries', async (req, res) => {
     }
   }
 });
-*/
+
 
 //-----------SERVICE ROUTES THAT INCLUDE GET ADD UPDATE DELETE
 
