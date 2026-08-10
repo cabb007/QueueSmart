@@ -3,10 +3,86 @@ import { useNavigate } from "react-router-dom";
 
 const API_URL = "http://localhost:3001";
 
+function EditableField({ label, value, displayValue, type = "text", options, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || "");
+  const [saving, setSaving] = useState(false);
+
+  function startEditing() {
+    setDraft(value || "");
+    setEditing(true);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    await onSave(draft);
+    setSaving(false);
+    setEditing(false);
+  }
+
+  return (
+    <div>
+      <label className="block text-xs font-semibold uppercase tracking-wider text-blue-500 mb-1">
+        {label}
+      </label>
+
+      {editing ? (
+        <div className="flex flex-col gap-2">
+          {type === "select" ? (
+            <select
+              className="text-sm border border-blue-200 rounded-lg px-2 py-1.5"
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              autoFocus
+            >
+              {options.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type={type}
+              className="text-sm border border-blue-200 rounded-lg px-2 py-1.5"
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              autoFocus
+            />
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="text-xs font-semibold text-white bg-blue-600 rounded-md px-3 py-1 hover:bg-blue-700 disabled:opacity-60"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+            <button
+              onClick={() => setEditing(false)}
+              disabled={saving}
+              className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p
+          onClick={startEditing}
+          className="text-sm text-slate-500 cursor-pointer hover:text-blue-600 hover:underline"
+          title="Click to edit"
+        >
+          {displayValue || "Not available"}
+        </p>
+      )}
+    </div>
+  );
+}
+
 const PatientDashboard = () => {
   const navigate = useNavigate();
 
   const [patient, setPatient] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [queueEntry, setQueueEntry] = useState(null);
   const [queueHistory, setQueueHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,10 +105,11 @@ const PatientDashboard = () => {
 
     async function loadPatientData() {
       try {
-        const [queueResponse, historyResponse] =
+        const [queueResponse, historyResponse, profileResponse] =
           await Promise.all([
             fetch(`${API_URL}/api/queue/${serviceId}`),
             fetch(`${API_URL}/api/history/${storedUser.id}`),
+            fetch(`${API_URL}/api/profile/${storedUser.id}`),
           ]);
 
         if (!queueResponse.ok) {
@@ -49,6 +126,11 @@ const PatientDashboard = () => {
 
         const queueData = await queueResponse.json();
         const historyData = await historyResponse.json();
+
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          setProfile(profileData.profile);
+        }
 
         const matchingEntry = queueData.queue.find(
           entry => entry.user_id === storedUser.id
@@ -92,6 +174,33 @@ const PatientDashboard = () => {
     localStorage.removeItem("serviceId");
 
     navigate("/");
+  }
+
+  async function handleProfileSave(field, newValue) {
+    const updated = {
+      dateOfBirth:      field === "dateOfBirth"      ? newValue : (profile?.date_of_birth || ""),
+      bloodType:        field === "bloodType"        ? newValue : (profile?.blood_type || ""),
+      emergencyContact: field === "emergencyContact" ? newValue : (profile?.emergency_contact || ""),
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/api/profile/${patient.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+
+      if (res.ok) {
+        setProfile(prev => ({
+          ...prev,
+          date_of_birth: updated.dateOfBirth,
+          blood_type: updated.bloodType,
+          emergency_contact: updated.emergencyContact,
+        }));
+      }
+    } catch (err) {
+      console.error("Unable to update profile:", err);
+    }
   }
 
   function getInitials(name = "") {
@@ -192,35 +301,44 @@ const PatientDashboard = () => {
             </div>
 
             <div className="pt-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-blue-500 mb-1">
-                  Date of Birth
-                </label>
+              <EditableField
+                label="Date of Birth"
+                type="date"
+                value={profile?.date_of_birth ? profile.date_of_birth.slice(0, 10) : ""}
+                displayValue={
+                  profile?.date_of_birth
+                    ? new Date(profile.date_of_birth).toLocaleDateString()
+                    : null
+                }
+                onSave={val => handleProfileSave("dateOfBirth", val)}
+              />
 
-                <p className="text-sm text-slate-500">
-                  Not available
-                </p>
-              </div>
+              <EditableField
+                label="Blood Type"
+                type="select"
+                value={profile?.blood_type || ""}
+                displayValue={profile?.blood_type}
+                options={[
+                  { value: "", label: "Select" },
+                  { value: "A+", label: "A+" },
+                  { value: "A-", label: "A-" },
+                  { value: "B+", label: "B+" },
+                  { value: "B-", label: "B-" },
+                  { value: "AB+", label: "AB+" },
+                  { value: "AB-", label: "AB-" },
+                  { value: "O+", label: "O+" },
+                  { value: "O-", label: "O-" },
+                ]}
+                onSave={val => handleProfileSave("bloodType", val)}
+              />
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-blue-500 mb-1">
-                  Blood Type
-                </label>
-
-                <p className="text-sm text-slate-500">
-                  Not available
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-blue-500 mb-1">
-                  Emergency Contact
-                </label>
-
-                <p className="text-sm text-slate-500">
-                  Not available
-                </p>
-              </div>
+              <EditableField
+                label="Emergency Contact"
+                type="text"
+                value={profile?.emergency_contact || ""}
+                displayValue={profile?.emergency_contact}
+                onSave={val => handleProfileSave("emergencyContact", val)}
+              />
             </div>
           </div>
 
@@ -315,54 +433,6 @@ const PatientDashboard = () => {
                         queueEntry.joined_at
                       ).toLocaleString()}
                     </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-blue-500 mb-1">
-                      Recorded Vitals
-                    </label>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                        <p className="text-xs text-blue-500">
-                          Temperature
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {queueEntry.vitals?.bodyTemp ??
-                            "N/A"}
-                        </p>
-                      </div>
-
-                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                        <p className="text-xs text-blue-500">
-                          Pain Level
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {queueEntry.vitals?.painLevel ??
-                            "N/A"}
-                        </p>
-                      </div>
-
-                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                        <p className="text-xs text-blue-500">
-                          Systolic BP
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {queueEntry.vitals?.sysBP ??
-                            "N/A"}
-                        </p>
-                      </div>
-
-                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                        <p className="text-xs text-blue-500">
-                          Diastolic BP
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {queueEntry.vitals?.diaBP ??
-                            "N/A"}
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 </div>
               ) : (
