@@ -24,14 +24,19 @@ function assessSeverity(vitals = {}) {
  * @returns {Object} { estimatedWaitMinutes, severityCategory }
  */
 function calculateWaitTime(position, expectedDuration, vitals = {}) {
-    // Edge-case guards
-    if (!position || position <= 1 || !expectedDuration || expectedDuration <= 0) {
-        return { estimatedWaitMinutes: 0, severityCategory: 'Standard' };
-    }
-    const baselineWait = (position - 1) * expectedDuration;
     const { category, multiplier } = assessSeverity(vitals);
+
+    
+    
+    if (!position || position <= 1 || !expectedDuration || expectedDuration <= 0) {
+        return { estimatedWaitMinutes: 0, severityCategory: category };
+    }
+
+    const baselineWait = (position - 1) * expectedDuration;
+
     //  round to whole minutes
     const adjustedWait = Math.round(baselineWait * multiplier);
+
     return {
         estimatedWaitMinutes: adjustedWait,
         severityCategory: category
