@@ -124,7 +124,10 @@ function ToggleBtn({ show, onToggle }) {
    REGISTER PAGE
 ══════════════════════════════════════════════ */
 export default function Register({ onGoLogin }) {
-  const [values, setValues] = useState({ name: '', email: '', password: '', confirm: '', role: 'patient' })
+  const [values, setValues] = useState({
+    name: '', email: '', password: '', confirm: '', role: 'patient',
+    dateOfBirth: '', bloodType: '', emergencyContact: '',
+  })
   const [errors, setErrors] = useState({})
   const [showPass, setShowPass] = useState(false)
   const [showConf, setShowConf] = useState(false)
@@ -151,6 +154,9 @@ export default function Register({ onGoLogin }) {
           email: values.email,
           password: values.password,
           role: values.role,
+          dateOfBirth: values.dateOfBirth,
+          bloodType: values.bloodType,
+          emergencyContact: values.emergencyContact,
         }),
       })
       const data = await res.json()
@@ -253,6 +259,48 @@ export default function Register({ onGoLogin }) {
 
             <Field id="reg-name" label="Full name" icon="🪪" type="text" placeholder="Jane Smith" autoComplete="name" value={values.name} onChange={e => set('name', e.target.value)} error={errors.name} />
             <Field id="reg-email" label="Email address" icon="✉️" type="email" placeholder="you@example.com" autoComplete="email" value={values.email} onChange={e => set('email', e.target.value)} error={errors.email} />
+
+            {/* Date of Birth */}
+            <div className="mb-4">
+              <label htmlFor="reg-dob" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Date of birth
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">🎂</span>
+                <input id="reg-dob" type="date" value={values.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm border border-gray-300 bg-gray-50
+                             text-gray-800 outline-none focus:bg-white focus:border-[#2B4ACB]
+                             focus:ring-2 focus:ring-[#2B4ACB]/10 transition-all duration-150" />
+              </div>
+            </div>
+
+            {/* Blood Type */}
+            <div className="mb-4">
+              <label htmlFor="reg-bloodtype" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Blood type
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">🩸</span>
+                <select id="reg-bloodtype" value={values.bloodType} onChange={e => set('bloodType', e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-lg text-sm border border-gray-300 bg-gray-50
+                             text-gray-800 outline-none appearance-none cursor-pointer
+                             focus:bg-white focus:border-[#2B4ACB] focus:ring-2 focus:ring-[#2B4ACB]/10
+                             transition-all duration-150">
+                  <option value="">Select (optional)</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Emergency Contact */}
+            <Field id="reg-emergency" label="Emergency contact" icon="📞" type="text" placeholder="Name and phone number" autoComplete="off" value={values.emergencyContact} onChange={e => set('emergencyContact', e.target.value)} error={errors.emergencyContact} />
 
             {/* Password */}
             <div className="mb-4">
