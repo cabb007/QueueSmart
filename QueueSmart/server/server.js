@@ -386,8 +386,16 @@ app.post('/api/auth/register', async (req, res) => {
       [userId, email, password_hash, req.body.role]
     )
     await db.query(
-      'INSERT INTO userprofile (profile_id, user_id, full_name, email) VALUES (?, ?, ?, ?)',
-      [profileId, userId, req.body.name.trim(), email]
+      'INSERT INTO userprofile (profile_id, user_id, full_name, email, date_of_birth, blood_type, emergency_contact) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [
+        profileId,
+        userId,
+        req.body.name.trim(),
+        email,
+        req.body.dateOfBirth || null,
+        req.body.bloodType || null,
+        req.body.emergencyContact || null,
+      ]
     )
 
     // Also keep in memory for other routes that depend on users array
@@ -465,6 +473,28 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err)
     return res.status(500).json({ message: 'Server error during login.' })
+  }
+})
+
+// GET /api/profile/:userId
+app.get('/api/profile/:userId', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT full_name, email, date_of_birth, blood_type, emergency_contact
+       FROM userprofile
+       WHERE user_id = ?`,
+      [req.params.userId]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Profile not found.' })
+    }
+
+    return res.status(200).json({ profile: rows[0] })
+
+  } catch (err) {
+    console.error('Profile retrieval error:', err)
+    return res.status(500).json({ message: 'Unable to retrieve profile.' })
   }
 })
 
@@ -609,16 +639,24 @@ app.get('/api/queue/:serviceId', async (req, res) => {
 
     // Add estimated wait time to every DB entry
     const serviceQueue = entries.map(entry => {
+      const vitals = {
+        bodyTemp:  entry.body_temp  ?? 98.6,
+        painLevel: entry.pain_level ?? 0,
+        sysBP:     entry.sys_bp     ?? 120,
+        diaBP:     entry.dia_bp     ?? 80,
+      }
+
       const waitTimeData = calculateWaitTime(
         entry.position,
         svc.duration,
-        {}
+        vitals
       )
 
       return {
         ...entry,
         service_id: req.params.serviceId,
         serviceName: svc.name,
+        vitals,
         estimatedWaitMinutes:
           waitTimeData.estimatedWaitMinutes,
         severityCategory:
@@ -710,13 +748,17 @@ app.post('/api/queue/:serviceId/join', async (req, res) => {
   //add to queue in db
   await db.query(
     `INSERT INTO queueentry
-     (entry_id, queue_id, user_id, position, joined_at, status)
-     VALUES (?, ?, ?, ?, NOW(), 'waiting')`,
+     (entry_id, queue_id, user_id, position, joined_at, status, body_temp, pain_level, sys_bp, dia_bp)
+     VALUES (?, ?, ?, ?, NOW(), 'waiting', ?, ?, ?, ?)`,
     [
         entry.id,
         queueId,
         entry.userId,
-        entry.position
+        entry.position,
+        entry.vitals.bodyTemp,
+        entry.vitals.painLevel,
+        entry.vitals.sysBP,
+        entry.vitals.diaBP
     ]
   );
 
