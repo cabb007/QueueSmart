@@ -498,6 +498,39 @@ app.get('/api/profile/:userId', async (req, res) => {
   }
 })
 
+// PUT /api/profile/:userId
+app.put('/api/profile/:userId', async (req, res) => {
+  try {
+    const [existing] = await db.query(
+      'SELECT profile_id FROM userprofile WHERE user_id = ?',
+      [req.params.userId]
+    )
+
+    if (existing.length === 0) {
+      return res.status(404).json({ message: 'Profile not found.' })
+    }
+
+    await db.query(
+      `UPDATE userprofile
+       SET date_of_birth = ?,
+           blood_type = ?,
+           emergency_contact = ?
+       WHERE user_id = ?`,
+      [
+        req.body.dateOfBirth || null,
+        req.body.bloodType || null,
+        req.body.emergencyContact || null,
+        req.params.userId,
+      ]
+    )
+
+    return res.status(200).json({ message: 'Profile updated successfully.' })
+
+  } catch (err) {
+    console.error('Profile update error:', err)
+    return res.status(500).json({ message: 'Unable to update profile.' })
+  }
+})
 // POST /api/auth/logout
 app.post('/api/auth/logout', (req, res) => {
   const token = req.headers.authorization?.split(' ')[1]
