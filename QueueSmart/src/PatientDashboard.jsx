@@ -177,8 +177,12 @@ const PatientDashboard = () => {
   }
 
   async function handleProfileSave(field, newValue) {
+    const currentDOB = profile?.date_of_birth
+      ? profile.date_of_birth.slice(0, 10)
+      : "";
+
     const updated = {
-      dateOfBirth:      field === "dateOfBirth"      ? newValue : (profile?.date_of_birth || ""),
+      dateOfBirth:      field === "dateOfBirth"      ? newValue : currentDOB,
       bloodType:        field === "bloodType"        ? newValue : (profile?.blood_type || ""),
       emergencyContact: field === "emergencyContact" ? newValue : (profile?.emergency_contact || ""),
     };
