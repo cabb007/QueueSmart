@@ -228,6 +228,23 @@ function JoinQueue() {
               </p>
             </div>
 
+            {joined && svc && (
+              <>
+                <label>Smart Notification</label>
+                <p className="miniText">
+                  We'll alert you before your turn — timed to how long{' '}
+                  {svc.name} usually takes, so you have enough time to get here.
+                </p>
+                <div className="greyBox">
+                  <p className="boldText">
+                    You'll be notified ~
+                    {Math.min(30, Math.max(5, Math.round(svc.duration * 0.75) + 5))}{' '}
+                    minutes before your turn
+                  </p>
+                </div>
+              </>
+            )}
+
             
               <button
                 className="joinButton"
