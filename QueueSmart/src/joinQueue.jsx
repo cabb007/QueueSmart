@@ -16,6 +16,12 @@ function JoinQueue() {
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState('')
 
+  // Intake vitals — used by the backend to assess severity/priority
+  const [bodyTemp,  setBodyTemp]  = useState('')
+  const [painLevel, setPainLevel] = useState('')
+  const [sysBP,     setSysBP]     = useState('')
+  const [diaBP,     setDiaBP]     = useState('')
+
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
   useEffect(() => {
@@ -84,10 +90,17 @@ function JoinQueue() {
     setLoading(true)
     setError('')
     try {
+      const vitals = {
+        bodyTemp:  bodyTemp  !== '' ? Number(bodyTemp)  : 98.6,
+        painLevel: painLevel !== '' ? Number(painLevel) : 0,
+        sysBP:     sysBP     !== '' ? Number(sysBP)     : 120,
+        diaBP:     diaBP     !== '' ? Number(diaBP)     : 80,
+      }
+
       const res  = await fetch(`http://localhost:3001/api/queue/${selectedSvc}/join`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ userId: user.id, name: user.name }),
+        body:    JSON.stringify({ userId: user.id, name: user.name, vitals }),
       })
       const data = await res.json()
 
@@ -197,6 +210,50 @@ function JoinQueue() {
 
             <label>Patient Name</label>
             <p className="subText">{user.name || 'Not logged in'}</p>
+
+            <label>Intake Vitals</label>
+            <p className="subText">
+              Optional — helps us prioritize care and adjust your wait time. Leave blank for normal/average values.
+            </p>
+
+            <label className="miniText">Body Temperature (°F)</label>
+            <input
+              type="number"
+              step="0.1"
+              className="textBox"
+              placeholder="98.6"
+              value={bodyTemp}
+              onChange={e => setBodyTemp(e.target.value)}
+            />
+
+            <label className="miniText">Pain Level (0–10)</label>
+            <input
+              type="number"
+              min="0"
+              max="10"
+              className="textBox"
+              placeholder="0"
+              value={painLevel}
+              onChange={e => setPainLevel(e.target.value)}
+            />
+
+            <label className="miniText">Systolic Blood Pressure</label>
+            <input
+              type="number"
+              className="textBox"
+              placeholder="120"
+              value={sysBP}
+              onChange={e => setSysBP(e.target.value)}
+            />
+
+            <label className="miniText">Diastolic Blood Pressure</label>
+            <input
+              type="number"
+              className="textBox"
+              placeholder="80"
+              value={diaBP}
+              onChange={e => setDiaBP(e.target.value)}
+            />
 
             
               <button
