@@ -5,7 +5,7 @@ const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
 const bcrypt = require('bcrypt')
 //const mysql  = require('mysql2/promise')
-const { calculateWaitTime, assessSeverity } = require('./waitTimeCalculator')
+const { calculateWaitTime, assessSeverity, computeNotificationLeadTime } = require('./waitTimeCalculator')
 //const db = require("./db");
 
 const app  = express()
@@ -203,7 +203,8 @@ async function checkCloseToFront(entry,service) {
     entry.vitals || {}
   )
 
-  const isClose = entry.position <=2 || waitTimeData.estimatedWaitMinutes <= 15
+  const leadTime = computeNotificationLeadTime(service, waitTimeData.severityCategory)
+  const isClose = entry.position <=2 || waitTimeData.estimatedWaitMinutes <= leadTime
 
   if(isClose && !entry.closeNotificationSent) {
     entry.closeNotificationSent = true
@@ -235,11 +236,13 @@ async function updateQueueEntryStatus(entry, service) {
 
   const previousStatus = entry.status
 
+  const leadTime = computeNotificationLeadTime(service, waitTimeData.severityCategory)
+
   let newStatus = 'waiting'
 
   if (
     entry.position <= 2 ||
-    waitTimeData.estimatedWaitMinutes <= 15
+    waitTimeData.estimatedWaitMinutes <= leadTime
   ) {
     newStatus = 'almost_ready'
   }
@@ -893,9 +896,11 @@ app.post('/api/queue/:serviceId/serve-next', async (req, res) => {
         {}
       )
 
+      const leadTime = computeNotificationLeadTime(svc, waitTimeData.severityCategory)
+
       if (
         entry.position <= 2 ||
-        waitTimeData.estimatedWaitMinutes <= 15
+        waitTimeData.estimatedWaitMinutes <= leadTime
       ) {
         const notification = await createNotification(
           entry.user_id,
