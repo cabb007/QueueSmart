@@ -10,9 +10,6 @@ const STATUS_STYLES = {
   canceled: 'bg-red-100 text-red-700',
 }
 
-const PIE_COLORS = ['#2B4ACB', '#2ECC71', '#E74C3C', '#F26522', '#9B59B6']
-const BAR_COLORS = { served: '#2ECC71', canceled: '#E74C3C', waiting: '#2B4ACB' }
-
 const TIMEFRAMES = [
   { label: 'Today',      value: 'today'   },
   { label: 'Last 7 Days',value: '7days'   },
@@ -29,6 +26,18 @@ export default function AdminReports() {
   const [startDate, setStartDate] = useState('')
   const [endDate,   setEndDate]   = useState('')
   const [filtered,  setFiltered]  = useState(null)
+
+  const [exportOptions, setExportOptions] = useState({
+  summary:        true,
+  pieChart:       true,
+  barChart:       true,
+  serviceTable:   true,
+  patientHistory: true,
+})
+const [showExportMenu, setShowExportMenu] = useState(false)
+
+const PIE_COLORS = ['#2B4ACB', '#2ECC71', '#E74C3C', '#F26522', '#9B59B6']
+const BAR_COLORS = { served: '#2ECC71', canceled: '#E74C3C', waiting: '#2B4ACB' }
 
   function fetchData() {
     setLoading(true)
@@ -125,117 +134,216 @@ export default function AdminReports() {
   }
 
   function exportCSV() {
-    if (!display) return
-    const rows = []
-    rows.push([`QueueSmart Report — ${getTimeframeLabel()}`])
-    rows.push([`Generated: ${new Date().toLocaleString()}`])
-    rows.push([])
+  if (!display) return
+  const rows = []
+  rows.push([`QueueSmart Report — ${getTimeframeLabel()}`])
+  rows.push([`Generated: ${new Date().toLocaleString()}`])
+  rows.push([])
+
+  if (exportOptions.summary) {
     rows.push(['SUMMARY'])
     rows.push(['Served Today', 'Served in Period', 'Avg Wait Time (min)'])
     rows.push([display.summary.servedToday, display.summary.servedAllTime, display.summary.avgWaitMinutes])
     rows.push([])
+  }
+
+  if (exportOptions.serviceTable) {
     rows.push(['SERVICE USAGE'])
     rows.push(['Service Name', 'Total Visits', 'Served', 'Canceled', 'Waiting'])
     display.serviceUsage.forEach(s => rows.push([s.serviceName, s.totalVisits, s.served, s.canceled, s.waiting]))
     rows.push([])
+  }
+
+  if (exportOptions.patientHistory) {
     rows.push(['PATIENT VISIT HISTORY'])
     rows.push(['Patient Name', 'Service', 'Date & Time', 'Status'])
     display.patientHistory.forEach(h => rows.push([h.patientName, h.serviceName, formatDate(h.joinedAt), h.status]))
-    const csv  = rows.map(r => r.map(cell => `"${cell}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href     = url
-    a.download = `queuesmart-report-${timeframe}-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
   }
+
+  const csv  = rows.map(r => r.map(cell => `"${cell}"`).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `queuesmart-report-${timeframe}-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
   async function exportPDF() {
   if (!display) return
 
-  const { default: jsPDF } = await import('jspdf')
-  const { default: autoTable } = await import('jspdf-autotable')
+const { jsPDF }              = await import('jspdf')
+const { default: autoTable } = await import('jspdf-autotable')
 
-  const doc = new jsPDF()
-  const pageWidth = doc.internal.pageSize.getWidth()
+  const doc      = new jsPDF()
+  let   currentY = 20
 
   // ── Title ──
   doc.setFontSize(20)
   doc.setTextColor(43, 74, 203)
-  doc.text('QueueSmart Report', 14, 20)
+  doc.text('QueueSmart Report', 14, currentY)
+  currentY += 8
 
   doc.setFontSize(10)
   doc.setTextColor(107, 122, 141)
-  doc.text(`Period: ${getTimeframeLabel()}`, 14, 28)
-  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 34)
+  doc.text(`Period: ${getTimeframeLabel()}`, 14, currentY)
+  currentY += 6
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, currentY)
+  currentY += 6
 
-  // ── Summary boxes ──
-  doc.setFontSize(13)
+  const included = []
+  if (exportOptions.summary)        included.push('Summary')
+  if (exportOptions.pieChart)       included.push('Pie Chart (see app)')
+  if (exportOptions.barChart)       included.push('Bar Chart (see app)')
+  if (exportOptions.serviceTable)   included.push('Service Usage')
+  if (exportOptions.patientHistory) included.push('Patient History')
+  doc.setFontSize(9)
+  doc.setTextColor(150, 150, 150)
+  doc.text(`Includes: ${included.join(', ')}`, 14, currentY)
+  currentY += 12
+
+  // ── Summary ──
+  if (exportOptions.summary) {
+    doc.setFontSize(13)
+    doc.setTextColor(13, 27, 75)
+    doc.text('Summary', 14, currentY)
+    currentY += 6
+
+    const summaryItems = [
+      { label: 'Served Today',     val: String(display.summary.servedToday)              },
+      { label: 'Served in Period', val: String(display.summary.servedAllTime)             },
+      { label: 'Avg Wait Time',    val: `${display.summary.avgWaitMinutes || 0} min`      },
+    ]
+    summaryItems.forEach((s, i) => {
+      const x = 14 + i * 62
+      doc.setFillColor(238, 241, 251)
+      doc.roundedRect(x, currentY, 58, 22, 3, 3, 'F')
+      doc.setFontSize(16)
+      doc.setTextColor(43, 74, 203)
+      doc.text(s.val, x + 29, currentY + 12, { align: 'center' })
+      doc.setFontSize(8)
+      doc.setTextColor(107, 122, 141)
+      doc.text(s.label, x + 29, currentY + 18, { align: 'center' })
+    })
+    currentY += 30
+  }
+
+  // ── Pie chart note ──
+if (exportOptions.pieChart) {
+  doc.setFontSize(11)
   doc.setTextColor(13, 27, 75)
-  doc.text('Summary', 14, 46)
+  doc.text('Visits by Service', 14, currentY)
+  currentY += 4
 
-  const summaryItems = [
-    { label: 'Served Today',     val: String(display.summary.servedToday)    },
-    { label: 'Served in Period', val: String(display.summary.servedAllTime)  },
-    { label: 'Avg Wait Time',    val: `${display.summary.avgWaitMinutes || 0} min` },
-  ]
-  summaryItems.forEach((s, i) => {
-    const x = 14 + i * 62
-    doc.setFillColor(238, 241, 251)
-    doc.roundedRect(x, 50, 58, 22, 3, 3, 'F')
-    doc.setFontSize(16)
-    doc.setTextColor(43, 74, 203)
-    doc.text(s.val, x + 29, 62, { align: 'center' })
-    doc.setFontSize(8)
-    doc.setTextColor(107, 122, 141)
-    doc.text(s.label, x + 29, 68, { align: 'center' })
-  })
+  try {
+    const { default: html2canvas } = await import('html2canvas')
+    const pieContainer = document.querySelectorAll('.recharts-responsive-container')[0]
+    if (pieContainer) {
+      const canvas  = await html2canvas(pieContainer, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
+      const imgData = canvas.toDataURL('image/png')
+      doc.addImage(imgData, 'PNG', 14, currentY, 88, 55)
+      currentY += 60
+    }
+  } catch {
+    // fallback to legend
+    const pieDisplay = display.serviceUsage.filter(s => Number(s.totalVisits) > 0)
+    const colors = [[43,74,203],[46,204,113],[231,76,60],[242,101,34],[155,89,182]]
+    pieDisplay.forEach((s, i) => {
+      const color = colors[i % colors.length]
+      doc.setFillColor(...color)
+      doc.rect(14, currentY - 3, 8, 5, 'F')
+      doc.setFontSize(9)
+      doc.setTextColor(50, 50, 50)
+      doc.text(`${s.serviceName}: ${s.totalVisits} visits`, 26, currentY + 1)
+      currentY += 8
+    })
+    currentY += 6
+  }
+}
+
+  // ── Bar chart ──
+if (exportOptions.barChart) {
+  doc.setFontSize(11)
+  doc.setTextColor(13, 27, 75)
+  doc.text('Outcomes by Service', 110, currentY - 56)
+
+  try {
+    const { default: html2canvas } = await import('html2canvas')
+    const barContainer = document.querySelectorAll('.recharts-responsive-container')[1]
+    if (barContainer) {
+      const canvas  = await html2canvas(barContainer, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
+      const imgData = canvas.toDataURL('image/png')
+      doc.addImage(imgData, 'PNG', 110, currentY - 60, 88, 55)
+      currentY += 6
+    }
+  } catch {
+    // fallback to text
+    display.serviceUsage.forEach(s => {
+      doc.setFontSize(9)
+      doc.setTextColor(50, 50, 50)
+      doc.text(`${s.serviceName}:`, 14, currentY)
+      doc.setTextColor(46, 125, 50)
+      doc.text(`Served: ${s.served}`, 70, currentY)
+      doc.setTextColor(198, 40, 40)
+      doc.text(`Canceled: ${s.canceled}`, 110, currentY)
+      doc.setTextColor(21, 101, 192)
+      doc.text(`Waiting: ${s.waiting}`, 155, currentY)
+      currentY += 7
+    })
+    currentY += 6
+  }
+}
 
   // ── Service usage table ──
-  doc.setFontSize(13)
-  doc.setTextColor(13, 27, 75)
-  doc.text('Service Usage Breakdown', 14, 84)
+  if (exportOptions.serviceTable) {
+    doc.setFontSize(13)
+    doc.setTextColor(13, 27, 75)
+    doc.text('Service Usage Breakdown', 14, currentY)
+    currentY += 4
 
-  autoTable(doc, {
-    startY: 88,
-    head: [['Service', 'Total Visits', 'Served', 'Canceled', 'Waiting']],
-    body: display.serviceUsage.map(s => [
-      s.serviceName, s.totalVisits, s.served, s.canceled, s.waiting
-    ]),
-    headStyles:   { fillColor: [43, 74, 203], textColor: 255, fontSize: 10 },
-    bodyStyles:   { fontSize: 9 },
-    alternateRowStyles: { fillColor: [238, 241, 251] },
-    styles:       { cellPadding: 4 },
-  })
+    autoTable(doc, {
+      startY: currentY,
+      head:   [['Service', 'Total Visits', 'Served', 'Canceled', 'Waiting']],
+      body:   display.serviceUsage.map(s => [
+        s.serviceName, s.totalVisits, s.served, s.canceled, s.waiting
+      ]),
+      headStyles:         { fillColor: [43, 74, 203], textColor: 255, fontSize: 10 },
+      bodyStyles:         { fontSize: 9 },
+      alternateRowStyles: { fillColor: [238, 241, 251] },
+      styles:             { cellPadding: 4 },
+    })
+    currentY = doc.lastAutoTable.finalY + 10
+  }
 
   // ── Patient history table ──
-  const afterTable = doc.lastAutoTable.finalY + 10
-  doc.setFontSize(13)
-  doc.setTextColor(13, 27, 75)
-  doc.text('Patient Visit History', 14, afterTable)
+  if (exportOptions.patientHistory) {
+    doc.setFontSize(13)
+    doc.setTextColor(13, 27, 75)
+    doc.text('Patient Visit History', 14, currentY)
+    currentY += 4
 
-  autoTable(doc, {
-    startY: afterTable + 4,
-    head: [['Patient', 'Service', 'Date & Time', 'Status']],
-    body: display.patientHistory.map(h => [
-      h.patientName, h.serviceName, formatDate(h.joinedAt), h.status
-    ]),
-    headStyles: { fillColor: [43, 74, 203], textColor: 255, fontSize: 10 },
-    bodyStyles: { fontSize: 9 },
-    alternateRowStyles: { fillColor: [238, 241, 251] },
-    styles: { cellPadding: 4 },
-    didDrawCell: (data) => {
-      if (data.section === 'body' && data.column.index === 3) {
-        const status = data.cell.raw
-        if (status === 'served')   data.cell.styles.textColor = [46, 125, 50]
-        if (status === 'canceled') data.cell.styles.textColor = [198, 40, 40]
-        if (status === 'waiting')  data.cell.styles.textColor = [21, 101, 192]
-      }
-    },
-  })
+    autoTable(doc, {
+      startY: currentY,
+      head:   [['Patient', 'Service', 'Date & Time', 'Status']],
+      body:   display.patientHistory.map(h => [
+        h.patientName, h.serviceName, formatDate(h.joinedAt), h.status
+      ]),
+      headStyles:         { fillColor: [43, 74, 203], textColor: 255, fontSize: 10 },
+      bodyStyles:         { fontSize: 9 },
+      alternateRowStyles: { fillColor: [238, 241, 251] },
+      styles:             { cellPadding: 4 },
+      didDrawCell: (data) => {
+        if (data.section === 'body' && data.column.index === 3) {
+          const status = String(data.cell.raw)
+          if (status === 'served')   doc.setTextColor(46, 125, 50)
+          if (status === 'canceled') doc.setTextColor(198, 40, 40)
+          if (status === 'waiting')  doc.setTextColor(21, 101, 192)
+        }
+      },
+    })
+  }
 
-  // ── Save ──
   doc.save(`queuesmart-report-${timeframe}-${new Date().toISOString().slice(0, 10)}.pdf`)
 }
   if (loading) return (
@@ -270,23 +378,72 @@ export default function AdminReports() {
             <h1 className="text-2xl font-extrabold text-[#0D1B4B] tracking-tight">Reports</h1>
             <p className="text-gray-500 text-sm mt-1">Clinic usage statistics and patient history</p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <button onClick={exportCSV}
-              className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm
-                         font-semibold rounded-lg transition-colors">
-              Export CSV
-            </button>
-            <button onClick={exportPDF}
-              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm
-                         font-semibold rounded-lg transition-colors">
-              Export PDF
-            </button>
-            <button onClick={fetchData}
-              className="px-4 py-2.5 bg-[#2B4ACB] hover:bg-[#1f37a0] text-white text-sm
-                         font-semibold rounded-lg transition-colors">
-              Refresh
-            </button>
-          </div>
+          <div className="flex items-center gap-3 flex-wrap relative">
+
+  {/* Export menu toggle */}
+  <div className="relative">
+    <button
+      onClick={() => setShowExportMenu(s => !s)}
+      className="px-4 py-2.5 bg-gray-700 hover:bg-gray-800 text-white text-sm
+                 font-semibold rounded-lg transition-colors flex items-center gap-2"
+    >
+      ⚙ Export Options {showExportMenu ? '▲' : '▼'}
+    </button>
+
+    {/* Dropdown */}
+    {showExportMenu && (
+      <div className="absolute right-0 top-12 z-50 bg-white border border-gray-200
+                      rounded-xl shadow-xl p-4 w-56">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+          Include in Export
+        </p>
+        {[
+          { key: 'summary',        label: 'Summary Statistics' },
+          { key: 'pieChart',       label: 'Pie Chart'          },
+          { key: 'barChart',       label: 'Bar Chart'          },
+          { key: 'serviceTable',   label: 'Service Usage Table'},
+          { key: 'patientHistory', label: 'Patient History'    },
+        ].map(opt => (
+          <label key={opt.key}
+            className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={exportOptions[opt.key]}
+              onChange={e => setExportOptions(prev => ({ ...prev, [opt.key]: e.target.checked }))}
+              className="w-4 h-4 accent-[#2B4ACB] cursor-pointer"
+            />
+            <span className="text-sm text-gray-700 group-hover:text-[#2B4ACB] transition-colors">
+              {opt.label}
+            </span>
+          </label>
+        ))}
+
+        <div className="border-t border-gray-100 mt-3 pt-3 flex flex-col gap-2">
+          <button
+            onClick={() => { exportCSV(); setShowExportMenu(false) }}
+            className="w-full py-2 bg-green-600 hover:bg-green-700 text-white text-xs
+                       font-semibold rounded-lg transition-colors"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={() => { exportPDF(); setShowExportMenu(false) }}
+            className="w-full py-2 bg-red-600 hover:bg-red-700 text-white text-xs
+                       font-semibold rounded-lg transition-colors"
+          >
+            Export PDF
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+
+  <button onClick={fetchData}
+    className="px-4 py-2.5 bg-[#2B4ACB] hover:bg-[#1f37a0] text-white text-sm
+               font-semibold rounded-lg transition-colors">
+    Refresh
+  </button>
+</div>
         </div>
 
         {/* ── Filter bar ── */}
