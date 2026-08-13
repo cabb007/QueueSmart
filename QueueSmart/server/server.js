@@ -1298,6 +1298,88 @@ app.delete("/service/:id", async(req,res) =>{
     }
 })
 
+// GET /api/admin/reports
+app.get('/api/admin/reports', async (req, res) => {
+  try {
+    // Total served today
+    const [servedToday] = await db.query(
+      `SELECT COUNT(*) AS total FROM queueentry
+       WHERE status = 'served'
+       AND DATE(joined_at) = CURDATE()`
+    )
+
+    // Total served all time
+    const [servedAll] = await db.query(
+      `SELECT COUNT(*) AS total FROM queueentry WHERE status = 'served'`
+    )
+
+    // Average wait time (position * duration approximation)
+    const [avgWait] = await db.query(
+      `SELECT ROUND(AVG(s.duration * qe.position), 1) AS avgWait
+       FROM queueentry qe
+       JOIN queue q ON qe.queue_id = q.queue_id
+       JOIN service s ON q.service_id = s.service_id
+       WHERE qe.status = 'served'`
+    )
+
+    // Service usage breakdown
+    const [serviceUsage] = await db.query(
+      `SELECT s.name AS serviceName,
+              COUNT(qe.entry_id) AS totalVisits,
+              SUM(CASE WHEN qe.status = 'served'   THEN 1 ELSE 0 END) AS served,
+              SUM(CASE WHEN qe.status = 'canceled' THEN 1 ELSE 0 END) AS canceled,
+              SUM(CASE WHEN qe.status = 'waiting'  THEN 1 ELSE 0 END) AS waiting
+       FROM service s
+       LEFT JOIN queue q    ON s.service_id  = q.service_id
+       LEFT JOIN queueentry qe ON q.queue_id = qe.queue_id
+       GROUP BY s.service_id, s.name
+       ORDER BY totalVisits DESC`
+    )
+
+    // Patient visit history (last 20)
+    const [patientHistory] = await db.query(
+      `SELECT up.full_name AS patientName, s.name AS serviceName,
+              qe.status, qe.joined_at AS joinedAt
+       FROM queueentry qe
+       JOIN queue q       ON qe.queue_id   = q.queue_id
+       JOIN service s     ON q.service_id  = s.service_id
+       JOIN userprofile up ON qe.user_id   = up.user_id
+       ORDER BY qe.joined_at DESC
+       LIMIT 20`
+    )
+
+    res.status(200).json({
+      summary: {
+        servedToday: servedToday[0].total,
+        servedAllTime: servedAll[0].total,
+        avgWaitMinutes: avgWait[0].avgWait || 0,
+      },
+      serviceUsage,
+      patientHistory,
+    })
+  } catch (err) {
+    console.error('Reports error:', err)
+    res.status(500).json({ message: 'Server error.' })
+  }
+})
+
+// GET /api/nurse/queue — all services with their queues
+app.get('/api/nurse/queue', async (req, res) => {
+  try {
+    const [services] = await db.query(
+      `SELECT s.service_id AS id, s.name, s.duration, q.queue_id, q.status,
+              COUNT(qe.entry_id) AS waitingCount
+       FROM service s
+       LEFT JOIN queue q ON s.service_id = q.service_id
+       LEFT JOIN queueentry qe ON q.queue_id = qe.queue_id AND qe.status = 'waiting'
+       GROUP BY s.service_id, q.queue_id, q.status`
+    )
+    res.status(200).json({ services })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error.' })
+  }
+})
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 if (require.main === module) {
   app.listen(PORT, () => {
