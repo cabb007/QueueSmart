@@ -1255,12 +1255,15 @@ app.post("/service", async (req,res) =>{
 
         //||INSERTION||\\
 
+        const serviceId = uuidv4();
+        const queueId = uuidv4();
+
         await db.query(
             `INSERT INTO service
             (service_id, name, description, duration, priority, created_at)
             VALUES (?,?,?,?,?,?)`,
             [
-                uuidv4(),
+                serviceId,
                 name.trim(),
                 description.trim(),
                 duration,
@@ -1268,8 +1271,23 @@ app.post("/service", async (req,res) =>{
                 new Date()
             ]
         );
+
+        await db.query(
+          `INSERT INTO queue
+          (queue_id, service_id, status, created_at)
+          VALUES (?,?,?,?)`,
+          [
+            queueId,
+            serviceId,
+            "open",
+            new Date()
+          ]
+        );
+
+
         res.status(201).json({
-            message: "Successfully created new service"
+            message: "Successfully created new service and queue",
+            serviceId, queueId
         });
 
     }catch(error){
