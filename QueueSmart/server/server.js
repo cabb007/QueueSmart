@@ -1201,8 +1201,13 @@ app.get('/api/db-entries', async (req, res) => {
 app.get("/service", async (req,res) => {
     try{
         const [rows] = await db.query(
-            "SELECT * FROM service"
-        )
+          `SELECT 
+          service.*,
+          queue.status
+          FROM service
+          LEFT JOIN queue
+          ON service.service_id = queue.service_id`
+        );
         res.json(rows);
     }catch(error){
         console.log(error);
@@ -1394,7 +1399,50 @@ app.delete("/service/:id", async(req,res) =>{
             message: "Error on service delete request"
         });
     }
-})
+});
+
+app.patch("/service/:id/toggle", async (req,res) => {
+  const serviceId = req.params.id;
+  
+  const [rows] = await db.query(
+    `SELECT queue_id, status
+     FROM queue
+     WHERE service_id = ?`,
+    [serviceId]
+  );
+  if(rows.length === 0){
+    return res.status(404).json({
+      message: "Queue not found for this service"
+    });
+  }
+  const queue = rows[0];
+
+  const newStatus = queue.status === "open"
+      ? "closed"
+      : "open";
+
+  await db.query(
+    `UPDATE queue
+     SET status = ?
+     WHERE queue_id = ?`,
+    [newStatus, queue.queue_id]
+  );
+
+  //query updated status
+  const [updated] = await db.query(
+        `SELECT 
+            service.*,
+            queue.status
+         FROM service
+         LEFT JOIN queue
+            ON service.service_id = queue.service_id
+         WHERE service.service_id = ?`,
+        [serviceId]
+    );
+
+    res.status(200).json(updated[0]);
+
+});
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 if (require.main === module) {
