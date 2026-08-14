@@ -44,28 +44,53 @@ function calculateWaitTime(position, expectedDuration, vitals = {}) {
 }
 
 /**
- * Smart feature: Notification Timing Optimization
- 
+ * SMART FEATURE: Priority-Based Queue Handling
+ *
+ * Returns a numeric priority rank for a severity category, where a LOWER
+ * number means HIGHER priority (should be seen sooner).
+ * Urgent = 1, Moderate = 2, Standard = 3.
+ *
+ * @param {string} severityCategory - 'Urgent' | 'Moderate' | 'Standard'
+ * @returns {number} rank - lower is higher priority
+ */
+function severityRank(severityCategory) {
+    const ranks = { Urgent: 1, Moderate: 2, Standard: 3 };
+    return ranks[severityCategory] ?? 3;
+}
+
+/**
+ * SMART FEATURE: Notification Timing Optimization
+ *
+ * Calculates a personalized lead time (in minutes) for when to send the
+ * "you're almost up" notification, instead of using one fixed threshold
+ * for every patient.
+ *
+ * Logic:
+ *  - Longer services get a longer lead time, since patients need more time
+ *    to wrap up what they're doing and travel back to the clinic.
+ *  - Urgent patients get a short, tight lead time since they're expected
+ *    to already be nearby / ready to be seen immediately.
+ *  - Lead time is clamped to a sensible range (5-30 min).
+ *
+ * @param {Object} service - { duration } expected service duration in minutes
+ * @param {string} severityCategory - 'Urgent' | 'Moderate' | 'Standard'
+ * @returns {number} leadTimeMinutes
  */
 function computeNotificationLeadTime(service, severityCategory = 'Standard') {
     const duration = service?.duration > 0 ? service.duration : 15;
 
-    // time scales with how long the service takes.
-    // e.g. a 10-min checkup -> ~15 min notice, a 40-min procedure -> ~30 min notice
     let leadTime = Math.round(duration * 0.75) + 5;
 
-    // Urgent patients are already flagged for immediate attention,
-    // so they don't need a long advance warning.
     if (severityCategory === 'Urgent') {
         leadTime = Math.min(leadTime, 10);
     }
 
-    // Keep it within a sane range regardless of service length.
     return Math.min(30, Math.max(5, leadTime));
 }
 
 module.exports = {
     calculateWaitTime,
     assessSeverity,
+    severityRank,
     computeNotificationLeadTime
 };
