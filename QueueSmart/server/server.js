@@ -669,11 +669,8 @@ app.get('/api/queue/:serviceId', async (req, res) => {
 
     // Get the REAL waiting entries from the database
     const [entries] = await db.query(
-      `SELECT *
-       FROM queueentry
-       WHERE queue_id = ?
-       AND status = 'waiting'
-       ORDER BY position ASC`,
+      `SELECT qe.*, up.full_name AS name FROM queueentry qe JOIN userprofile up ON qe.user_id = up.user_id
+      WHERE qe.queue_id = ? AND qe.status = 'waiting' ORDER BY qe.position ASC`,
       [queueId]
     )
 

@@ -8,7 +8,7 @@ export default function QueueManagement() {
   const [removeId,    setRemoveId]    = useState(null)
   const [loading,     setLoading]     = useState(true)
 
-  const svc = services.find(s => s.id === selectedSvc)
+  const svc = services.find(s => s.service_id === selectedSvc)
 
   // ── Fetch services on mount ──
   useEffect(() => {
@@ -18,7 +18,7 @@ export default function QueueManagement() {
         const open = data.services.filter(s => s.status === 'open')
         setServices(data.services)
         if (open.length) {
-          setSelectedSvc(open[0].id)
+          setSelectedSvc(open[0].service_id)
         }
         setLoading(false)
       })
@@ -72,24 +72,59 @@ export default function QueueManagement() {
   }
 
   async function confirmRemove() {
-    try {
-      const entry = queue.find(q => q.id === removeId)
-      const res   = await fetch(`http://localhost:3001/api/queue/${selectedSvc}/leave`, {
-        method:  'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ userId: entry?.userId }),
-      })
-      if (res.ok) {
-        const qRes  = await fetch(`http://localhost:3001/api/queue/${selectedSvc}`)
-        const qData = await qRes.json()
-        setQueue(qData.queue || [])
-      }
+  try {
+    const entry = queue.find(
+      q => q.entry_id === removeId
+    )
+
+    if (!entry) {
+      console.error('Queue entry not found')
       setRemoveId(null)
-    } catch (err) {
-      console.error('Failed to remove patient:', err)
-      setRemoveId(null)
+      return
     }
+
+    const res = await fetch(
+      'http://localhost:3001/api/queue/leave',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: entry.user_id
+        })
+      }
+    )
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      console.error(
+        'Failed to remove patient:',
+        data
+      )
+      return
+    }
+
+    // refresh current queue
+    const qRes = await fetch(
+      `http://localhost:3001/api/queue/${selectedSvc}`
+    )
+
+    const qData = await qRes.json()
+
+    setQueue(qData.queue || [])
+    setRemoveId(null)
+
+  } catch (err) {
+    console.error(
+      'Failed to remove patient:',
+      err
+    )
+
+    setRemoveId(null)
   }
+}
 
   if (loading) return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -124,7 +159,7 @@ export default function QueueManagement() {
                            focus:border-[#2B4ACB] focus:ring-2 focus:ring-[#2B4ACB]/10 transition-all"
               >
                 {services.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} {s.status === 'closed' ? '(Closed)' : ''}</option>
+                  <option key={s.service_id} value={s.service_id}>{s.name} {s.status === 'closed' ? '(Closed)' : ''}</option>
                 ))}
               </select>
             </div>
@@ -218,7 +253,7 @@ export default function QueueManagement() {
                       </span>
 
                       <button
-                        onClick={() => setRemoveId(q.id)}
+                        onClick={() => setRemoveId(q.entry_id)}
                         className="text-xs font-semibold text-red-500 hover:text-red-700
                                    border border-red-200 hover:border-red-400 px-2.5 py-1
                                    rounded-lg transition-colors shrink-0"
@@ -266,7 +301,7 @@ export default function QueueManagement() {
             <div className="px-7 py-6">
               <p className="text-sm text-gray-600 mb-6">
                 Are you sure you want to remove{' '}
-                <strong className="text-gray-800">{queue.find(q => q.id === removeId)?.name}</strong> from the queue?
+                <strong className="text-gray-800">{queue.find(q => q.entry_id === removeId)?.name}</strong> from the queue?
               </p>
               <div className="flex gap-3">
                 <button
