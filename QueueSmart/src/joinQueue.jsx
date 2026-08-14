@@ -115,7 +115,9 @@ function JoinQueue() {
       setQueueEntry({
       ...data.entry,
       estimatedWaitMinutes: data.estimatedWaitMinutes,
-      severityCategory: data.severityCategory
+      severityCategory: data.severityCategory,
+      wasBumpedAhead: data.wasBumpedAhead,
+      notificationLeadTime: data.notificationLeadTime
       })
       localStorage.setItem('serviceId', selectedSvc)
       toast.success('You have joined the queue!')
@@ -292,17 +294,39 @@ function JoinQueue() {
               </p>
             </div>
 
+            {joined && queueEntry?.severityCategory && (
+              <>
+                <label>Priority Status</label>
+                <p className="miniText">
+                  Your position is automatically adjusted based on your intake vitals —
+                  patients with more urgent conditions are moved ahead in line.
+                </p>
+                <div className="greyBox">
+                  <p className="boldText">
+                    Priority: {queueEntry.severityCategory}
+                  </p>
+                  {queueEntry.wasBumpedAhead && (
+                    <p className="miniText" style={{ marginTop: '6px' }}>
+                      You were prioritized ahead of some lower-priority patients
+                      already waiting.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
             {joined && svc && (
               <>
                 <label>Smart Notification</label>
                 <p className="miniText">
                   We'll alert you before your turn — timed to how long{' '}
-                  {svc.name} usually takes, so you have enough time to get here.
+                  {svc.name} usually takes and how urgent your condition is,
+                  so you have enough time to get here.
                 </p>
                 <div className="greyBox">
                   <p className="boldText">
                     You'll be notified ~
-                    {Math.min(30, Math.max(5, Math.round(svc.duration * 0.75) + 5))}{' '}
+                    {queueEntry?.notificationLeadTime ?? '—'}{' '}
                     minutes before your turn
                   </p>
                 </div>

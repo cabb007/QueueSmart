@@ -5,7 +5,7 @@ const cors    = require('cors')
 const { v4: uuidv4 } = require('uuid')
 const bcrypt = require('bcrypt')
 //const mysql  = require('mysql2/promise')
-const { calculateWaitTime, assessSeverity, computeNotificationLeadTime } = require('./waitTimeCalculator')
+const { calculateWaitTime, assessSeverity, severityRank, computeNotificationLeadTime } = require('./waitTimeCalculator')
 //const db = require("./db");
 
 const app  = express()
@@ -689,6 +689,8 @@ app.get('/api/queue/:serviceId', async (req, res) => {
         vitals
       )
 
+      const notificationLeadTime = computeNotificationLeadTime(svc, waitTimeData.severityCategory)
+
       return {
         ...entry,
         service_id: req.params.serviceId,
@@ -697,7 +699,8 @@ app.get('/api/queue/:serviceId', async (req, res) => {
         estimatedWaitMinutes:
           waitTimeData.estimatedWaitMinutes,
         severityCategory:
-          waitTimeData.severityCategory
+          waitTimeData.severityCategory,
+        notificationLeadTime
       }
     })
 
@@ -778,14 +781,54 @@ app.post('/api/queue/:serviceId/join', async (req, res) => {
     });
   }
 
-  //determine next position from db data
-  const [positionRows] = await db.query(
-    `SELECT COALESCE(MAX(position), 0) + 1 AS nextPosition FROM queueentry WHERE queue_id = ? AND status = 'waiting'`, [queueId]
+  const vitals = req.body.vitals || {}
+
+  // SMART FEATURE: Priority-Based Queue Handling
+  // Instead of always joining at the back, the patient is inserted based on
+  // severity: Urgent patients are placed ahead of Moderate/Standard patients
+  // already waiting, and Moderate ahead of Standard. Patients with the same
+  // priority level keep normal first-come-first-served order.
+  const { category: newCategory } = assessSeverity(vitals)
+  const newRank = severityRank(newCategory)
+
+  const [waitingEntries] = await db.query(
+    `SELECT entry_id, position, body_temp, pain_level, sys_bp, dia_bp
+     FROM queueentry
+     WHERE queue_id = ? AND status = 'waiting'
+     ORDER BY position ASC`,
+    [queueId]
   );
 
-  const position = positionRows[0].nextPosition;
+  let position = waitingEntries.length + 1
+  let higherOrEqualPriorityCount = 0
 
-  const vitals = req.body.vitals || {}
+  for (const waitingEntry of waitingEntries) {
+    const existingVitals = {
+      bodyTemp:  waitingEntry.body_temp  ?? 98.6,
+      painLevel: waitingEntry.pain_level ?? 0,
+      sysBP:     waitingEntry.sys_bp     ?? 120,
+      diaBP:     waitingEntry.dia_bp     ?? 80,
+    }
+    const { category: existingCategory } = assessSeverity(existingVitals)
+    const existingRank = severityRank(existingCategory)
+
+    if (existingRank <= newRank) {
+      higherOrEqualPriorityCount++
+    }
+  }
+
+  // New patient slots in right after everyone with equal-or-higher priority.
+  position = higherOrEqualPriorityCount + 1
+
+  // Bump everyone at or after that position back by one to make room.
+  if (position <= waitingEntries.length) {
+    await db.query(
+      `UPDATE queueentry
+       SET position = position + 1
+       WHERE queue_id = ? AND status = 'waiting' AND position >= ?`,
+      [queueId, position]
+    );
+  }
 
   //define entry
   const entry = {
@@ -827,13 +870,40 @@ app.post('/api/queue/:serviceId/join', async (req, res) => {
     entry.vitals
   )
 
+  const wasBumpedAhead = position <= waitingEntries.length
+
   const joinedNotification = await createNotification(
   entry.userId,
   entry.serviceId,
   'queue_joined',
-  `You joined the ${svc.name} queue at position ${entry.position}. Your estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`,
+  wasBumpedAhead
+    ? `You joined the ${svc.name} queue and were prioritized to position ${entry.position} based on your condition. Your estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`
+    : `You joined the ${svc.name} queue at position ${entry.position}. Your estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`,
   waitTimeData
   )
+
+  const joinNotifications = [joinedNotification]
+
+  const notificationLeadTime = computeNotificationLeadTime(svc, waitTimeData.severityCategory)
+
+  // If the patient joined already close to the front (e.g. they were
+  // prioritized straight to position 1), fire the "almost ready" alert
+  // immediately instead of waiting for a serve-next event that may never come.
+  const isAlreadyClose =
+    entry.position <= 2 || waitTimeData.estimatedWaitMinutes <= notificationLeadTime
+
+  if (isAlreadyClose) {
+    const almostReadyNotification = await createNotification(
+      entry.userId,
+      entry.serviceId,
+      'almost_ready',
+      waitTimeData.estimatedWaitMinutes === 0
+        ? `You are next for ${svc.name}. Please be ready.`
+        : `You are close to being served for ${svc.name}. Your estimated wait is ${waitTimeData.estimatedWaitMinutes} minutes.`,
+      waitTimeData
+    )
+    joinNotifications.push(almostReadyNotification)
+  }
 
   return res.status(201).json({
     message:              'Joined queue successfully.',
@@ -842,7 +912,9 @@ app.post('/api/queue/:serviceId/join', async (req, res) => {
       waitTimeData.estimatedWaitMinutes,
     severityCategory:
       waitTimeData.severityCategory,
-    notifications: [joinedNotification],
+    wasBumpedAhead,
+    notificationLeadTime,
+    notifications: joinNotifications,
   })
 })
 
