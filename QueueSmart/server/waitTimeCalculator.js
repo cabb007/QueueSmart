@@ -79,8 +79,11 @@ function severityRank(severityCategory) {
 function computeNotificationLeadTime(service, severityCategory = 'Standard') {
     const duration = service?.duration > 0 ? service.duration : 15;
 
+// Base lead time scales with how long the service takes.
     let leadTime = Math.round(duration * 0.75) + 5;
 
+    // Urgent patients are already flagged for immediate attention,
+    // so they don't need a long advance warning.
     if (severityCategory === 'Urgent') {
         leadTime = Math.min(leadTime, 10);
     }
