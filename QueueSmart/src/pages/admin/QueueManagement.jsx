@@ -188,7 +188,7 @@ export default function QueueManagement() {
                   </p>
                   {queue[0] && (
                     <p className="text-sm text-gray-400 mt-0.5">
-                      {queue[0].id} · Joined {formatTime(queue[0].joinedAt)}
+                      {queue[0].id} · Joined {formatTime(queue[0].joined_at)}
                     </p>
                   )}
                 </div>
@@ -223,7 +223,7 @@ export default function QueueManagement() {
                 <div className="flex flex-col gap-3">
                   {queue.map((q, i) => (
                     <div
-                      key={q.id}
+                      key={q.entry_id}
                       className={`border rounded-xl p-4 flex items-center gap-4 transition-colors
                                   ${i === 0 ? 'border-[#2B4ACB] bg-[#EEF1FB]' : 'border-gray-200 bg-white'}`}
                     >
@@ -236,7 +236,7 @@ export default function QueueManagement() {
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-gray-800 text-sm">{q.name}</div>
                         <div className="text-xs text-gray-400 mt-0.5">
-                          {q.id} · Joined {formatTime(q.joinedAt)}
+                          {q.entry_id} · Joined {formatTime(q.joined_at)}
                         </div>
                       </div>
 
@@ -277,7 +277,7 @@ export default function QueueManagement() {
                                       text-green-600 font-bold text-sm shrink-0">✓</div>
                       <div className="flex-1">
                         <div className="text-sm font-semibold text-gray-800">{s.name}</div>
-                        <div className="text-xs text-gray-400">{s.id} · Served at {s.servedAt}</div>
+                        <div className="text-xs text-gray-400">{s.entry_id} · Served at {s.servedAt}</div>
                       </div>
                     </div>
                   ))}

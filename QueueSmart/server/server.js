@@ -956,7 +956,9 @@ app.post('/api/queue/:serviceId/serve-next', async (req, res) => {
 
     // Find the first waiting patient
     const [entryRows] = await db.query(
-      `SELECT entry_id, user_id, position, joined_at FROM queueentry WHERE queue_id = ? AND status = 'waiting' ORDER BY position ASC LIMIT 1`,
+      `SELECT qe.entry_id, qe.user_id, qe.position, qe.joined_at, up.full_name AS name FROM queueentry qe
+      JOIN userprofile up ON qe.user_id = up.user_id WHERE qe.queue_id = ? AND qe.status = 'waiting'
+      ORDER BY qe.position ASC LIMIT 1`,
       [queueId]
     )
 
