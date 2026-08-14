@@ -32,10 +32,10 @@ export default function ServiceManagement() {
 // ── Fetch services from backend on mount ──
   async function loadServices() {
     try {
-        const res = await fetch("http://localhost:3001/service");
+        const res = await fetch("http://localhost:3001/api/services");
         const data = await res.json();
 
-        setServices(data);
+        setServices(data.services);
         setLoading(false);
     } catch (err) {
         console.error(err);
@@ -75,7 +75,7 @@ export default function ServiceManagement() {
 
         if (editing) {
             // Update existing service
-            res = await fetch(`http://localhost:3001/service/${editing}`, {
+            res = await fetch(`http://localhost:3001/api/services/${editing}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -84,7 +84,7 @@ export default function ServiceManagement() {
             });
         } else {
             // Create new service
-            res = await fetch("http://localhost:3001/service", {
+            res = await fetch("http://localhost:3001/api/services", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -110,7 +110,7 @@ export default function ServiceManagement() {
   }
   async function handleDelete() {
     try {
-        const res = await fetch(`http://localhost:3001/service/${deleteId}`, {
+        const res = await fetch(`http://localhost:3001/api/services/${deleteId}`, {
             method: "DELETE",
         });
 
@@ -131,7 +131,7 @@ export default function ServiceManagement() {
 
   async function toggleStatus(id) {
     try {
-      const res  = await fetch(`http://localhost:3001/service/${id}/toggle`, {
+      const res  = await fetch(`http://localhost:3001/api/services/${id}/toggle`, {
         method: 'PATCH',
       })
       const data = await res.json()

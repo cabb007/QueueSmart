@@ -555,7 +555,8 @@ app.get("/api/queuestatus", (req,res) => {
 // SERVICE MANAGEMENT ROUTES
 // ══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/services
+// GET /api/services  old local memory implementations
+/*
 app.get('/api/services', (req, res) => {
   res.status(200).json({ services })
 })
@@ -624,6 +625,7 @@ app.patch('/api/services/:id/toggle', (req, res) => {
   services[idx].status = services[idx].status === 'open' ? 'closed' : 'open'
   res.status(200).json({ message: 'Status toggled.', service: services[idx] })
 })
+*/
 
 // ══════════════════════════════════════════════════════════════════════════════
 // QUEUE MANAGEMENT ROUTES
@@ -632,15 +634,20 @@ app.patch('/api/services/:id/toggle', (req, res) => {
 // GET /api/queue/:serviceId
 app.get('/api/queue/:serviceId', async (req, res) => {
   try {
-    const svc = services.find(
-      service => service.id === req.params.serviceId
+    const [serviceRows] = await db.query(
+      `SELECT *
+      FROM service
+      WHERE service_id = ?`,
+      [req.params.serviceId]
     )
 
-    if (!svc) {
+    if (serviceRows.length === 0) {
       return res.status(404).json({
         message: 'Service not found.'
       })
     }
+
+    const svc = serviceRows[0]
 
     // Find the open DB queue for this service
     const [queueRows] = await db.query(
@@ -717,10 +724,31 @@ app.get('/api/queue/:serviceId', async (req, res) => {
 
 // POST /api/queue/:serviceId/join
 app.post('/api/queue/:serviceId/join', async (req, res) => {
-  const svc = services.find(s => s.id === req.params.serviceId)
+  const [serviceRows] = await db.query(
+  `SELECT
+      s.*,
+      q.status AS queue_status
+   FROM service s
+   LEFT JOIN queue q
+     ON s.service_id = q.service_id
+   WHERE s.service_id = ?
+   LIMIT 1`,
+  [req.params.serviceId]
+)
 
-  if (!svc)                    return res.status(404).json({ message: 'Service not found.' })
-  if (svc.status === 'closed') return res.status(400).json({ message: 'This service is currently closed.' })
+  if (serviceRows.length === 0) {
+    return res.status(404).json({
+      message: 'Service not found.'
+    })
+  }
+
+  const svc = serviceRows[0]
+
+  if (svc.queue_status === 'closed') {
+    return res.status(400).json({
+      message: 'This service is currently closed.'
+    })
+  }
 
   if (!req.body.userId || !req.body.name)
     return res.status(400).json({ message: 'userId and name are required.' })
@@ -833,11 +861,16 @@ app.post('/api/queue/leave', async (req, res) => {
     }
 
     const [entryRows] = await db.query(
-      `SELECT entry_id, queue_id, position
-       FROM queueentry
-       WHERE user_id = ?
-       AND status = 'waiting'
-       LIMIT 1`,
+      `SELECT 
+     qe.entry_id,
+     qe.queue_id,
+     qe.position,
+     q.service_id
+     FROM queueentry qe
+     JOIN queue q ON qe.queue_id = q.queue_id
+     WHERE qe.user_id = ?
+      AND qe.status = 'waiting'
+      LIMIT 1`,
       [userId]
     )
 
@@ -865,10 +898,6 @@ app.post('/api/queue/leave', async (req, res) => {
       [entry.queue_id, entry.position]
     )
 
-    const service = services.find(
-      service => service.id === entry.service_id
-    )
-
     const leaveNotification = await createNotification(
       userId,
       entry.service_id,
@@ -893,17 +922,26 @@ app.post('/api/queue/leave', async (req, res) => {
 // POST /api/queue/:serviceId/serve-next
 app.post('/api/queue/:serviceId/serve-next', async (req, res) => {
   try {
-    const serviceId = req.params.serviceId
-
-    const svc = services.find(
-      service => service.id === serviceId
+    const serviceId = req.params.serviceId;
+    const [serviceRows] = await db.query(
+    `SELECT
+        s.*,
+        q.status AS queue_status
+    FROM service s
+    LEFT JOIN queue q
+      ON s.service_id = q.service_id
+    WHERE s.service_id = ?
+    LIMIT 1`,
+    [serviceId]
     )
 
-    if (!svc) {
+    if (serviceRows.length === 0) {
       return res.status(404).json({
         message: 'Service not found.'
       })
     }
+
+    const svc = serviceRows[0]
 
     // Find the open queue for this service
     const [queueRows] = await db.query(
@@ -1019,10 +1057,13 @@ app.get('/api/history/:userId', async (req, res) => {
         qe.position,
         qe.joined_at,
         qe.status,
-        q.service_id
+        q.service_id,
+        s.name AS service_name
       FROM queueentry qe
       JOIN queue q
         ON qe.queue_id = q.queue_id
+      JOIN service s
+        ON q.service_id = s.service_id
       WHERE qe.user_id = ?
         AND qe.status IN ('served', 'canceled')
       ORDER BY qe.joined_at DESC
@@ -1198,7 +1239,7 @@ app.get('/api/db-entries', async (req, res) => {
 //-----------SERVICE ROUTES THAT INCLUDE GET ADD UPDATE DELETE
 
 //get all services
-app.get("/service", async (req,res) => {
+app.get("/api/services", async (req,res) => {
     try{
         const [rows] = await db.query(
           `SELECT 
@@ -1208,7 +1249,7 @@ app.get("/service", async (req,res) => {
           LEFT JOIN queue
           ON service.service_id = queue.service_id`
         );
-        res.json(rows);
+        res.json({ services: rows });
     }catch(error){
         console.log(error);
         res.status(500).json({
@@ -1216,8 +1257,37 @@ app.get("/service", async (req,res) => {
         });
     }
 });
+//get 1 service
+app.get("/api/services/:id", async (req,res) => {
+  try{
+    const serviceId = req.params.id;
+
+    const [rows] = await db.query(
+      `SELECT 
+          service.*,
+          queue.status
+        FROM service
+        LEFT JOIN queue
+          ON service.service_id = queue.service_id
+        WHERE service.service_id = ?`,
+          [serviceId]
+    );
+    if (rows.length === 0) {
+    return res.status(404).json({
+        message: "Service not found."
+    });
+    }
+    res.json({service: rows[0]});
+
+  }catch(error){
+    console.log(error);
+    res.status(500).json({
+      message: "error on get 1 service"
+    });
+  }
+});
 //adding a service
-app.post("/service", async (req,res) =>{
+app.post("/api/services", async (req,res) =>{
     try{
 
         //|| VERIFICATIONS||\\
@@ -1303,7 +1373,7 @@ app.post("/service", async (req,res) =>{
     }
 });
 //update a service
-app.put("/service/:id", async(req,res) =>{
+app.put("/api/services/:id", async(req,res) =>{
     try{
         const serviceId = req.params.id;
         const {name, description, duration, priority} = req.body;
@@ -1373,7 +1443,7 @@ app.put("/service/:id", async(req,res) =>{
     }
 });
 //delete a service
-app.delete("/service/:id", async(req,res) =>{
+app.delete("/api/services/:id", async(req,res) =>{
     try{
         const serviceId = req.params.id;
         const [servCheck] = await db.query(
@@ -1401,7 +1471,7 @@ app.delete("/service/:id", async(req,res) =>{
     }
 });
 
-app.patch("/service/:id/toggle", async (req,res) => {
+app.patch("/api/services/:id/toggle", async (req,res) => {
   const serviceId = req.params.id;
   
   const [rows] = await db.query(

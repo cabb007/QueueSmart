@@ -30,7 +30,7 @@ function JoinQueue() {
       .then(data => {
         const open = data.services.filter(s => s.status === 'open')
         setServices(open)
-        if (open.length) setSelectedSvc(open[0].id)
+        if (open.length) setSelectedSvc(open[0].service_id)
       })
       .catch(() => setError('Could not load services.'))
   }, [])
@@ -55,7 +55,7 @@ function JoinQueue() {
         const data = await res.json()
 
         const matchingEntry = data.queue.find(entry => entry.user_id === user.id)
-        const selectedService = services.find(service => service.id === selectedSvc)
+        const selectedService = services.find(service => service.service_id === selectedSvc)
 
         if(matchingEntry) { //if already in queue
           setJoined(true)
@@ -111,8 +111,15 @@ function JoinQueue() {
       }
 
       setJoined(true)
-      setQueueEntry(data)
+
+      setQueueEntry({
+      ...data.entry,
+      estimatedWaitMinutes: data.estimatedWaitMinutes,
+      severityCategory: data.severityCategory
+      })
+      localStorage.setItem('serviceId', selectedSvc)
       toast.success('You have joined the queue!')
+      navigate('/queuestatus')
     } catch {
       toast.error('Could not connect to server.')
       setError('Could not connect to server.')
@@ -152,7 +159,7 @@ function JoinQueue() {
 
   
 
-  const svc = services.find(s => s.id === selectedSvc)
+  const svc = services.find(s => s.service_id === selectedSvc)
 
   function calculateFrontendWait(position) {
   if (!svc) {
@@ -204,7 +211,7 @@ function JoinQueue() {
               }}
             >
               {services.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.service_id} value={s.service_id}>{s.name}</option>
               ))}
             </select>
 
@@ -264,7 +271,7 @@ function JoinQueue() {
                 {loading ? 'Joining...' : 'Join Queue'}
               </button>
             
-            <label>Estimated Wait Time</label>
+            <label>{joined ? 'Current Wait Time' : 'Estimated Wait Time'}</label>
             <p className="miniText">
               *Wait times and queue positions may vary for different services
             </p>
@@ -276,7 +283,7 @@ function JoinQueue() {
               </p>
             </div>
 
-            <label>Estimated Queue Position</label>
+            <label>{joined ? 'Current Queue Position' : 'Estimated Queue Position'}</label>
             <div className="greyBox">
               <p className="boldText">
                 {queueEntry

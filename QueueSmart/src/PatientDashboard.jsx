@@ -465,7 +465,7 @@ const PatientDashboard = () => {
                     >
                       <div>
                         <h4 className="text-sm font-semibold text-slate-800">
-                          {historyEntry.service_id}
+                          {historyEntry.service_name}
                         </h4>
 
                         <p className="text-xs text-slate-500 mt-0.5 capitalize">
