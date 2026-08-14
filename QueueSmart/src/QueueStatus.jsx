@@ -18,7 +18,7 @@ export default function QueueStatus() {
   };
 
   useEffect(() => {
-    const serviceId  = "s1";
+    const serviceId  = localStorage.getItem("serviceId");
     const storedUser = JSON.parse(localStorage.getItem("user") || "null");
     const userId     = storedUser?.id;
 

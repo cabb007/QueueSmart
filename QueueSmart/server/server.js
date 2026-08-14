@@ -555,7 +555,8 @@ app.get("/api/queuestatus", (req,res) => {
 // SERVICE MANAGEMENT ROUTES
 // ══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/services
+// GET /api/services  old local memory implementations
+/*
 app.get('/api/services', (req, res) => {
   res.status(200).json({ services })
 })
@@ -624,6 +625,7 @@ app.patch('/api/services/:id/toggle', (req, res) => {
   services[idx].status = services[idx].status === 'open' ? 'closed' : 'open'
   res.status(200).json({ message: 'Status toggled.', service: services[idx] })
 })
+*/
 
 // ══════════════════════════════════════════════════════════════════════════════
 // QUEUE MANAGEMENT ROUTES
@@ -632,15 +634,20 @@ app.patch('/api/services/:id/toggle', (req, res) => {
 // GET /api/queue/:serviceId
 app.get('/api/queue/:serviceId', async (req, res) => {
   try {
-    const svc = services.find(
-      service => service.id === req.params.serviceId
+    const [serviceRows] = await db.query(
+      `SELECT *
+      FROM service
+      WHERE service_id = ?`,
+      [req.params.serviceId]
     )
 
-    if (!svc) {
+    if (serviceRows.length === 0) {
       return res.status(404).json({
         message: 'Service not found.'
       })
     }
+
+    const svc = serviceRows[0]
 
     // Find the open DB queue for this service
     const [queueRows] = await db.query(
@@ -662,11 +669,8 @@ app.get('/api/queue/:serviceId', async (req, res) => {
 
     // Get the REAL waiting entries from the database
     const [entries] = await db.query(
-      `SELECT *
-       FROM queueentry
-       WHERE queue_id = ?
-       AND status = 'waiting'
-       ORDER BY position ASC`,
+      `SELECT qe.*, up.full_name AS name FROM queueentry qe JOIN userprofile up ON qe.user_id = up.user_id
+      WHERE qe.queue_id = ? AND qe.status = 'waiting' ORDER BY qe.position ASC`,
       [queueId]
     )
 
@@ -717,10 +721,31 @@ app.get('/api/queue/:serviceId', async (req, res) => {
 
 // POST /api/queue/:serviceId/join
 app.post('/api/queue/:serviceId/join', async (req, res) => {
-  const svc = services.find(s => s.id === req.params.serviceId)
+  const [serviceRows] = await db.query(
+  `SELECT
+      s.*,
+      q.status AS queue_status
+   FROM service s
+   LEFT JOIN queue q
+     ON s.service_id = q.service_id
+   WHERE s.service_id = ?
+   LIMIT 1`,
+  [req.params.serviceId]
+)
 
-  if (!svc)                    return res.status(404).json({ message: 'Service not found.' })
-  if (svc.status === 'closed') return res.status(400).json({ message: 'This service is currently closed.' })
+  if (serviceRows.length === 0) {
+    return res.status(404).json({
+      message: 'Service not found.'
+    })
+  }
+
+  const svc = serviceRows[0]
+
+  if (svc.queue_status === 'closed') {
+    return res.status(400).json({
+      message: 'This service is currently closed.'
+    })
+  }
 
   if (!req.body.userId || !req.body.name)
     return res.status(400).json({ message: 'userId and name are required.' })
@@ -833,11 +858,16 @@ app.post('/api/queue/leave', async (req, res) => {
     }
 
     const [entryRows] = await db.query(
-      `SELECT entry_id, queue_id, position
-       FROM queueentry
-       WHERE user_id = ?
-       AND status = 'waiting'
-       LIMIT 1`,
+      `SELECT 
+     qe.entry_id,
+     qe.queue_id,
+     qe.position,
+     q.service_id
+     FROM queueentry qe
+     JOIN queue q ON qe.queue_id = q.queue_id
+     WHERE qe.user_id = ?
+      AND qe.status = 'waiting'
+      LIMIT 1`,
       [userId]
     )
 
@@ -865,10 +895,6 @@ app.post('/api/queue/leave', async (req, res) => {
       [entry.queue_id, entry.position]
     )
 
-    const service = services.find(
-      service => service.id === entry.service_id
-    )
-
     const leaveNotification = await createNotification(
       userId,
       entry.service_id,
@@ -893,17 +919,26 @@ app.post('/api/queue/leave', async (req, res) => {
 // POST /api/queue/:serviceId/serve-next
 app.post('/api/queue/:serviceId/serve-next', async (req, res) => {
   try {
-    const serviceId = req.params.serviceId
-
-    const svc = services.find(
-      service => service.id === serviceId
+    const serviceId = req.params.serviceId;
+    const [serviceRows] = await db.query(
+    `SELECT
+        s.*,
+        q.status AS queue_status
+    FROM service s
+    LEFT JOIN queue q
+      ON s.service_id = q.service_id
+    WHERE s.service_id = ?
+    LIMIT 1`,
+    [serviceId]
     )
 
-    if (!svc) {
+    if (serviceRows.length === 0) {
       return res.status(404).json({
         message: 'Service not found.'
       })
     }
+
+    const svc = serviceRows[0]
 
     // Find the open queue for this service
     const [queueRows] = await db.query(
@@ -921,7 +956,9 @@ app.post('/api/queue/:serviceId/serve-next', async (req, res) => {
 
     // Find the first waiting patient
     const [entryRows] = await db.query(
-      `SELECT entry_id, user_id, position, joined_at FROM queueentry WHERE queue_id = ? AND status = 'waiting' ORDER BY position ASC LIMIT 1`,
+      `SELECT qe.entry_id, qe.user_id, qe.position, qe.joined_at, up.full_name AS name FROM queueentry qe
+      JOIN userprofile up ON qe.user_id = up.user_id WHERE qe.queue_id = ? AND qe.status = 'waiting'
+      ORDER BY qe.position ASC LIMIT 1`,
       [queueId]
     )
 
@@ -1019,10 +1056,13 @@ app.get('/api/history/:userId', async (req, res) => {
         qe.position,
         qe.joined_at,
         qe.status,
-        q.service_id
+        q.service_id,
+        s.name AS service_name
       FROM queueentry qe
       JOIN queue q
         ON qe.queue_id = q.queue_id
+      JOIN service s
+        ON q.service_id = s.service_id
       WHERE qe.user_id = ?
         AND qe.status IN ('served', 'canceled')
       ORDER BY qe.joined_at DESC
@@ -1198,12 +1238,17 @@ app.get('/api/db-entries', async (req, res) => {
 //-----------SERVICE ROUTES THAT INCLUDE GET ADD UPDATE DELETE
 
 //get all services
-app.get("/service", async (req,res) => {
+app.get("/api/services", async (req,res) => {
     try{
         const [rows] = await db.query(
-            "SELECT * FROM service"
-        )
-        res.json(rows);
+          `SELECT 
+          service.*,
+          queue.status
+          FROM service
+          LEFT JOIN queue
+          ON service.service_id = queue.service_id`
+        );
+        res.json({ services: rows });
     }catch(error){
         console.log(error);
         res.status(500).json({
@@ -1211,8 +1256,37 @@ app.get("/service", async (req,res) => {
         });
     }
 });
+//get 1 service
+app.get("/api/services/:id", async (req,res) => {
+  try{
+    const serviceId = req.params.id;
+
+    const [rows] = await db.query(
+      `SELECT 
+          service.*,
+          queue.status
+        FROM service
+        LEFT JOIN queue
+          ON service.service_id = queue.service_id
+        WHERE service.service_id = ?`,
+          [serviceId]
+    );
+    if (rows.length === 0) {
+    return res.status(404).json({
+        message: "Service not found."
+    });
+    }
+    res.json({service: rows[0]});
+
+  }catch(error){
+    console.log(error);
+    res.status(500).json({
+      message: "error on get 1 service"
+    });
+  }
+});
 //adding a service
-app.post("/service", async (req,res) =>{
+app.post("/api/services", async (req,res) =>{
     try{
 
         //|| VERIFICATIONS||\\
@@ -1255,12 +1329,15 @@ app.post("/service", async (req,res) =>{
 
         //||INSERTION||\\
 
+        const serviceId = uuidv4();
+        const queueId = uuidv4();
+
         await db.query(
             `INSERT INTO service
             (service_id, name, description, duration, priority, created_at)
             VALUES (?,?,?,?,?,?)`,
             [
-                uuidv4(),
+                serviceId,
                 name.trim(),
                 description.trim(),
                 duration,
@@ -1268,8 +1345,23 @@ app.post("/service", async (req,res) =>{
                 new Date()
             ]
         );
+
+        await db.query(
+          `INSERT INTO queue
+          (queue_id, service_id, status, created_at)
+          VALUES (?,?,?,?)`,
+          [
+            queueId,
+            serviceId,
+            "open",
+            new Date()
+          ]
+        );
+
+
         res.status(201).json({
-            message: "Successfully created new service"
+            message: "Successfully created new service and queue",
+            serviceId, queueId
         });
 
     }catch(error){
@@ -1280,7 +1372,7 @@ app.post("/service", async (req,res) =>{
     }
 });
 //update a service
-app.put("/service/:id", async(req,res) =>{
+app.put("/api/services/:id", async(req,res) =>{
     try{
         const serviceId = req.params.id;
         const {name, description, duration, priority} = req.body;
@@ -1350,7 +1442,7 @@ app.put("/service/:id", async(req,res) =>{
     }
 });
 //delete a service
-app.delete("/service/:id", async(req,res) =>{
+app.delete("/api/services/:id", async(req,res) =>{
     try{
         const serviceId = req.params.id;
         const [servCheck] = await db.query(
@@ -1376,6 +1468,131 @@ app.delete("/service/:id", async(req,res) =>{
             message: "Error on service delete request"
         });
     }
+});
+
+app.patch("/api/services/:id/toggle", async (req,res) => {
+  const serviceId = req.params.id;
+  
+  const [rows] = await db.query(
+    `SELECT queue_id, status
+     FROM queue
+     WHERE service_id = ?`,
+    [serviceId]
+  );
+  if(rows.length === 0){
+    return res.status(404).json({
+      message: "Queue not found for this service"
+    });
+  }
+  const queue = rows[0];
+
+  const newStatus = queue.status === "open"
+      ? "closed"
+      : "open";
+
+  await db.query(
+    `UPDATE queue
+     SET status = ?
+     WHERE queue_id = ?`,
+    [newStatus, queue.queue_id]
+  );
+
+  //query updated status
+  const [updated] = await db.query(
+        `SELECT 
+            service.*,
+            queue.status
+         FROM service
+         LEFT JOIN queue
+            ON service.service_id = queue.service_id
+         WHERE service.service_id = ?`,
+        [serviceId]
+    );
+
+    res.status(200).json(updated[0]);
+
+});
+
+// GET /api/admin/reports
+app.get('/api/admin/reports', async (req, res) => {
+  try {
+    // Total served today
+    const [servedToday] = await db.query(
+      `SELECT COUNT(*) AS total FROM queueentry
+       WHERE status = 'served'
+       AND DATE(joined_at) = CURDATE()`
+    )
+
+    // Total served all time
+    const [servedAll] = await db.query(
+      `SELECT COUNT(*) AS total FROM queueentry WHERE status = 'served'`
+    )
+
+    // Average wait time (position * duration approximation)
+    const [avgWait] = await db.query(
+      `SELECT ROUND(AVG(s.duration * qe.position), 1) AS avgWait
+       FROM queueentry qe
+       JOIN queue q ON qe.queue_id = q.queue_id
+       JOIN service s ON q.service_id = s.service_id
+       WHERE qe.status = 'served'`
+    )
+
+    // Service usage breakdown
+    const [serviceUsage] = await db.query(
+      `SELECT s.name AS serviceName,
+              COUNT(qe.entry_id) AS totalVisits,
+              SUM(CASE WHEN qe.status = 'served'   THEN 1 ELSE 0 END) AS served,
+              SUM(CASE WHEN qe.status = 'canceled' THEN 1 ELSE 0 END) AS canceled,
+              SUM(CASE WHEN qe.status = 'waiting'  THEN 1 ELSE 0 END) AS waiting
+       FROM service s
+       LEFT JOIN queue q    ON s.service_id  = q.service_id
+       LEFT JOIN queueentry qe ON q.queue_id = qe.queue_id
+       GROUP BY s.service_id, s.name
+       ORDER BY totalVisits DESC`
+    )
+
+    // Patient visit history (last 20)
+    const [patientHistory] = await db.query(
+      `SELECT up.full_name AS patientName, s.name AS serviceName,
+              qe.status, qe.joined_at AS joinedAt
+       FROM queueentry qe
+       JOIN queue q       ON qe.queue_id   = q.queue_id
+       JOIN service s     ON q.service_id  = s.service_id
+       JOIN userprofile up ON qe.user_id   = up.user_id
+       ORDER BY qe.joined_at DESC
+       LIMIT 20`
+    )
+
+    res.status(200).json({
+      summary: {
+        servedToday: servedToday[0].total,
+        servedAllTime: servedAll[0].total,
+        avgWaitMinutes: avgWait[0].avgWait || 0,
+      },
+      serviceUsage,
+      patientHistory,
+    })
+  } catch (err) {
+    console.error('Reports error:', err)
+    res.status(500).json({ message: 'Server error.' })
+  }
+})
+
+// GET /api/nurse/queue — all services with their queues
+app.get('/api/nurse/queue', async (req, res) => {
+  try {
+    const [services] = await db.query(
+      `SELECT s.service_id AS id, s.name, s.duration, q.queue_id, q.status,
+              COUNT(qe.entry_id) AS waitingCount
+       FROM service s
+       LEFT JOIN queue q ON s.service_id = q.service_id
+       LEFT JOIN queueentry qe ON q.queue_id = qe.queue_id AND qe.status = 'waiting'
+       GROUP BY s.service_id, q.queue_id, q.status`
+    )
+    res.status(200).json({ services })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error.' })
+  }
 })
 
 // ── Start ─────────────────────────────────────────────────────────────────────
