@@ -12,7 +12,7 @@ const { app, resetData } = require("./server");
 
 
 beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
 
     // This still resets the old in-memory test data
     // used by server.js.
@@ -325,6 +325,12 @@ describe("GET /api/services", () => {
 
     test("returns list of services", async () => {
 
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", status: "open" }
+            ]
+        ]);
+
         const response = await request(app)
             .get("/api/services");
 
@@ -341,12 +347,18 @@ describe("GET /api/services/:id", () => {
 
     test("returns a service by id", async () => {
 
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", status: "open" }
+            ]
+        ]);
+
         const response = await request(app)
             .get("/api/services/s1");
 
         expect(response.statusCode).toBe(200);
 
-        expect(response.body.service.id)
+        expect(response.body.service.service_id)
             .toBe("s1");
 
         expect(response.body.service.name)
@@ -355,6 +367,10 @@ describe("GET /api/services/:id", () => {
 
 
     test("returns 404 for unknown id", async () => {
+
+        db.query.mockResolvedValueOnce([
+            []
+        ]);
 
         const response = await request(app)
             .get("/api/services/fake-service");
@@ -369,22 +385,37 @@ describe("POST /api/services", () => {
 
     test("creates a service with valid data", async () => {
 
+        // Duplicate name check
+        db.query.mockResolvedValueOnce([
+            []
+        ]);
+
+        // INSERT service
+        db.query.mockResolvedValueOnce([
+            { affectedRows: 1 }
+        ]);
+
+        // INSERT queue
+        db.query.mockResolvedValueOnce([
+            { affectedRows: 1 }
+        ]);
+
         const response = await request(app)
             .post("/api/services")
             .send({
                 name: "Test Service",
-                desc: "Testing service",
+                description: "Testing service",
                 duration: 10,
                 priority: "medium"
             });
 
         expect(response.statusCode).toBe(201);
 
-        expect(response.body.service.name)
-            .toBe("Test Service");
+        expect(response.body.serviceId)
+            .toBeDefined();
 
-        expect(response.body.service.status)
-            .toBe("open");
+        expect(response.body.queueId)
+            .toBeDefined();
     });
 
 
@@ -393,7 +424,7 @@ describe("POST /api/services", () => {
         const response = await request(app)
             .post("/api/services")
             .send({
-                desc: "Testing service",
+                description: "Testing service",
                 duration: 10,
                 priority: "medium"
             });
@@ -402,28 +433,43 @@ describe("POST /api/services", () => {
     });
 
 
-    test("rejects name over 100 characters", async () => {
+    test("rejects duplicate service name", async () => {
 
-        const response = await request(app)
-            .post("/api/services")
-            .send({
-                name: "a".repeat(101),
-                desc: "Testing service",
-                duration: 10,
-                priority: "medium"
-            });
-
-        expect(response.statusCode).toBe(400);
-    });
-
-
-    test("rejects invalid priority", async () => {
+        // Duplicate name check finds a match
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "existing-service" }
+            ]
+        ]);
 
         const response = await request(app)
             .post("/api/services")
             .send({
                 name: "Test Service",
-                desc: "Testing",
+                description: "Testing",
+                duration: 10,
+                priority: "medium"
+            });
+
+        expect(response.statusCode).toBe(400);
+
+        expect(response.body.message)
+            .toMatch(/already/i);
+    });
+
+
+    test("rejects invalid priority", async () => {
+
+        // Duplicate name check
+        db.query.mockResolvedValueOnce([
+            []
+        ]);
+
+        const response = await request(app)
+            .post("/api/services")
+            .send({
+                name: "Test Service",
+                description: "Testing",
                 duration: 10,
                 priority: "wrong"
             });
@@ -434,11 +480,16 @@ describe("POST /api/services", () => {
 
     test("rejects missing duration", async () => {
 
+        // Duplicate name check
+        db.query.mockResolvedValueOnce([
+            []
+        ]);
+
         const response = await request(app)
             .post("/api/services")
             .send({
                 name: "Test Service",
-                desc: "Testing",
+                description: "Testing",
                 priority: "medium"
             });
 
@@ -452,38 +503,48 @@ describe("PUT /api/services/:id", () => {
 
     test("updates an existing service", async () => {
 
-        // Create a temporary service
-        const createResponse = await request(app)
-            .post("/api/services")
-            .send({
-                name: "Update Test",
-                desc: "Testing update",
-                duration: 10,
-                priority: "medium"
-            });
+        // SELECT service_id check
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1" }
+            ]
+        ]);
 
-        const serviceId =
-            createResponse.body.service.id;
+        // UPDATE service
+        db.query.mockResolvedValueOnce([
+            { affectedRows: 1 }
+        ]);
 
         const response = await request(app)
-            .put(`/api/services/${serviceId}`)
+            .put("/api/services/s1")
             .send({
-                name: "Updated Service"
+                name: "Updated Service",
+                description: "Updated description",
+                duration: 15,
+                priority: "high"
             });
 
         expect(response.statusCode).toBe(200);
 
-        expect(response.body.service.name)
-            .toBe("Updated Service");
+        expect(response.body.message)
+            .toMatch(/updated/i);
     });
 
 
     test("returns 404 for unknown id", async () => {
 
+        // SELECT service_id check finds nothing
+        db.query.mockResolvedValueOnce([
+            []
+        ]);
+
         const response = await request(app)
             .put("/api/services/fake-id")
             .send({
-                name: "Updated"
+                name: "Updated",
+                description: "Updated",
+                duration: 10,
+                priority: "medium"
             });
 
         expect(response.statusCode).toBe(404);
@@ -496,20 +557,20 @@ describe("DELETE /api/services/:id", () => {
 
     test("deletes an existing service", async () => {
 
-        const createResponse = await request(app)
-            .post("/api/services")
-            .send({
-                name: "Delete Test",
-                desc: "Testing delete",
-                duration: 10,
-                priority: "low"
-            });
+        // SELECT check
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1" }
+            ]
+        ]);
 
-        const serviceId =
-            createResponse.body.service.id;
+        // DELETE
+        db.query.mockResolvedValueOnce([
+            { affectedRows: 1 }
+        ]);
 
         const response = await request(app)
-            .delete(`/api/services/${serviceId}`);
+            .delete("/api/services/s1");
 
         expect(response.statusCode).toBe(200);
 
@@ -519,6 +580,10 @@ describe("DELETE /api/services/:id", () => {
 
 
     test("returns 404 for unknown id", async () => {
+
+        db.query.mockResolvedValueOnce([
+            []
+        ]);
 
         const response = await request(app)
             .delete("/api/services/fake-id");
@@ -533,32 +598,40 @@ describe("PATCH /api/services/:id/toggle", () => {
 
     test("toggles service status", async () => {
 
-        // Create a service so we don't modify s1-s5
-        const createResponse = await request(app)
-            .post("/api/services")
-            .send({
-                name: "Toggle Test",
-                desc: "Testing toggle",
-                duration: 10,
-                priority: "medium"
-            });
+        // SELECT current queue status
+        db.query.mockResolvedValueOnce([
+            [
+                { queue_id: "q1", status: "open" }
+            ]
+        ]);
 
-        const serviceId =
-            createResponse.body.service.id;
+        // UPDATE queue status
+        db.query.mockResolvedValueOnce([
+            { affectedRows: 1 }
+        ]);
+
+        // SELECT updated service+queue
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", status: "closed" }
+            ]
+        ]);
 
         const response = await request(app)
-            .patch(
-                `/api/services/${serviceId}/toggle`
-            );
+            .patch("/api/services/s1/toggle");
 
         expect(response.statusCode).toBe(200);
 
-        expect(response.body.service.status)
+        expect(response.body.status)
             .toBe("closed");
     });
 
 
     test("returns 404 for unknown id", async () => {
+
+        db.query.mockResolvedValueOnce([
+            []
+        ]);
 
         const response = await request(app)
             .patch("/api/services/fake-id/toggle");
@@ -577,7 +650,14 @@ describe("GET /api/queue/:serviceId", () => {
 
     test("returns queue for a valid service", async () => {
 
-        // SELECT queue_id
+        // SELECT service
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", duration: 15 }
+            ]
+        ]);
+
+        // SELECT open queue
         db.query.mockResolvedValueOnce([
             [
                 {
@@ -586,7 +666,7 @@ describe("GET /api/queue/:serviceId", () => {
             ]
         ]);
 
-        // SELECT queueentry
+        // SELECT queueentry joined with userprofile
         db.query.mockResolvedValueOnce([
             [
                 {
@@ -594,14 +674,16 @@ describe("GET /api/queue/:serviceId", () => {
                     queue_id: "q1",
                     user_id: "user1",
                     position: 1,
-                    status: "waiting"
+                    status: "waiting",
+                    name: "User One"
                 },
                 {
                     entry_id: "entry2",
                     queue_id: "q1",
                     user_id: "user2",
                     position: 2,
-                    status: "waiting"
+                    status: "waiting",
+                    name: "User Two"
                 }
             ]
         ]);
@@ -626,6 +708,12 @@ describe("GET /api/queue/:serviceId", () => {
 
         db.query.mockResolvedValueOnce([
             [
+                { service_id: "s1", name: "General Check-Up", duration: 15 }
+            ]
+        ]);
+
+        db.query.mockResolvedValueOnce([
+            [
                 {
                     queue_id: "q1"
                 }
@@ -639,7 +727,8 @@ describe("GET /api/queue/:serviceId", () => {
                     queue_id: "q1",
                     user_id: "user1",
                     position: 2,
-                    status: "waiting"
+                    status: "waiting",
+                    name: "User One"
                 }
             ]
         ]);
@@ -658,6 +747,11 @@ describe("GET /api/queue/:serviceId", () => {
 
     test("returns 404 for unknown service", async () => {
 
+        // SELECT service finds nothing
+        db.query.mockResolvedValueOnce([
+            []
+        ]);
+
         const response = await request(app)
             .get("/api/queue/fake-service");
 
@@ -667,6 +761,14 @@ describe("GET /api/queue/:serviceId", () => {
 
     test("returns 404 when service has no open queue", async () => {
 
+        // SELECT service succeeds
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", duration: 15 }
+            ]
+        ]);
+
+        // SELECT open queue finds nothing
         db.query.mockResolvedValueOnce([
             []
         ]);
@@ -691,7 +793,14 @@ describe("POST /api/queue/:serviceId/join", () => {
 
     test("joins a queue successfully", async () => {
 
-        // 1. Find open queue
+        // 1. SELECT service (joined with queue status)
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", duration: 15, queue_status: "open" }
+            ]
+        ]);
+
+        // 2. Find open queue
         db.query.mockResolvedValueOnce([
             [
                 {
@@ -700,28 +809,32 @@ describe("POST /api/queue/:serviceId/join", () => {
             ]
         ]);
 
-        // 2. User is NOT already waiting
+        // 3. User is NOT already waiting
         db.query.mockResolvedValueOnce([
             []
         ]);
 
-        // 3. Find next position
+        // 4. Existing waiting entries for priority calc (empty queue)
         db.query.mockResolvedValueOnce([
-            [
-                {
-                    nextPosition: 3
-                }
-            ]
+            []
         ]);
 
-        // 4. INSERT queueentry
+        // 5. INSERT queueentry
         db.query.mockResolvedValueOnce([
             {
                 affectedRows: 1
             }
         ]);
 
-        // 5. INSERT notification
+        // 6. INSERT queue_joined notification
+        db.query.mockResolvedValueOnce([
+            {
+                affectedRows: 1
+            }
+        ]);
+
+        // 7. INSERT almost_ready notification
+        //    (fires immediately since joining at position 1 is always "close")
         db.query.mockResolvedValueOnce([
             {
                 affectedRows: 1
@@ -747,7 +860,7 @@ describe("POST /api/queue/:serviceId/join", () => {
             .toBe("test-user-99");
 
         expect(response.body.entry.position)
-            .toBe(3);
+            .toBe(1);
 
         expect(
             response.body.estimatedWaitMinutes
@@ -757,7 +870,12 @@ describe("POST /api/queue/:serviceId/join", () => {
 
     test("rejects joining a closed service", async () => {
 
-        // s4 is closed in server.js
+        // SELECT service returns a closed queue_status
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s4", name: "Prescription Refill", duration: 8, queue_status: "closed" }
+            ]
+        ]);
 
         const response = await request(app)
             .post("/api/queue/s4/join")
@@ -774,6 +892,13 @@ describe("POST /api/queue/:serviceId/join", () => {
 
 
     test("rejects duplicate join", async () => {
+
+        // SELECT service (open)
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", duration: 15, queue_status: "open" }
+            ]
+        ]);
 
         // Find queue
         db.query.mockResolvedValueOnce([
@@ -809,6 +934,13 @@ describe("POST /api/queue/:serviceId/join", () => {
 
     test("rejects missing userId", async () => {
 
+        // SELECT service still runs before the body validation check
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", duration: 15, queue_status: "open" }
+            ]
+        ]);
+
         const response = await request(app)
             .post("/api/queue/s1/join")
             .send({
@@ -821,6 +953,12 @@ describe("POST /api/queue/:serviceId/join", () => {
 
     test("rejects missing name", async () => {
 
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", duration: 15, queue_status: "open" }
+            ]
+        ]);
+
         const response = await request(app)
             .post("/api/queue/s1/join")
             .send({
@@ -832,6 +970,10 @@ describe("POST /api/queue/:serviceId/join", () => {
 
 
     test("returns 404 for unknown service", async () => {
+
+        db.query.mockResolvedValueOnce([
+            []
+        ]);
 
         const response = await request(app)
             .post("/api/queue/fake-service/join")
@@ -846,6 +988,14 @@ describe("POST /api/queue/:serviceId/join", () => {
 
     test("returns 404 when no open queue exists", async () => {
 
+        // SELECT service succeeds
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", duration: 15, queue_status: "open" }
+            ]
+        ]);
+
+        // SELECT open queue finds nothing
         db.query.mockResolvedValueOnce([
             []
         ]);
@@ -956,7 +1106,14 @@ describe("POST /api/queue/:serviceId/serve-next", () => {
 
     test("serves the next patient", async () => {
 
-        // 1. Find open queue
+        // 1. SELECT service (joined with queue status)
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", duration: 15, queue_status: "open" }
+            ]
+        ]);
+
+        // 2. Find open queue
         db.query.mockResolvedValueOnce([
             [
                 {
@@ -965,7 +1122,7 @@ describe("POST /api/queue/:serviceId/serve-next", () => {
             ]
         ]);
 
-        // 2. Find first waiting patient
+        // 3. Find first waiting patient
         db.query.mockResolvedValueOnce([
             [
                 {
@@ -973,33 +1130,34 @@ describe("POST /api/queue/:serviceId/serve-next", () => {
                     user_id: "user1",
                     position: 1,
                     joined_at:
-                        new Date().toISOString()
+                        new Date().toISOString(),
+                    name: "User One"
                 }
             ]
         ]);
 
-        // 3. Mark patient served
+        // 4. Mark patient served
         db.query.mockResolvedValueOnce([
             {
                 affectedRows: 1
             }
         ]);
 
-        // 4. Insert served notification
+        // 5. Insert served notification
         db.query.mockResolvedValueOnce([
             {
                 affectedRows: 1
             }
         ]);
 
-        // 5. Move remaining queue forward
+        // 6. Move remaining queue forward
         db.query.mockResolvedValueOnce([
             {
                 affectedRows: 2
             }
         ]);
 
-        // 6. Return remaining queue.
+        // 7. Return remaining queue.
         // Empty here keeps this test focused on serving.
         db.query.mockResolvedValueOnce([
             []
@@ -1025,6 +1183,13 @@ describe("POST /api/queue/:serviceId/serve-next", () => {
 
 
     test("returns 400 when queue is empty", async () => {
+
+        // SELECT service
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", duration: 15, queue_status: "open" }
+            ]
+        ]);
 
         // Find queue
         db.query.mockResolvedValueOnce([
@@ -1052,6 +1217,14 @@ describe("POST /api/queue/:serviceId/serve-next", () => {
 
     test("returns 404 when queue does not exist", async () => {
 
+        // SELECT service succeeds
+        db.query.mockResolvedValueOnce([
+            [
+                { service_id: "s1", name: "General Check-Up", duration: 15, queue_status: "open" }
+            ]
+        ]);
+
+        // SELECT open queue finds nothing
         db.query.mockResolvedValueOnce([
             []
         ]);
@@ -1067,6 +1240,11 @@ describe("POST /api/queue/:serviceId/serve-next", () => {
 
 
     test("returns 404 for unknown service", async () => {
+
+        // SELECT service finds nothing
+        db.query.mockResolvedValueOnce([
+            []
+        ]);
 
         const response = await request(app)
             .post(
