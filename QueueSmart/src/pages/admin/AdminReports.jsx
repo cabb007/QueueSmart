@@ -529,11 +529,11 @@ if (exportOptions.barChart) {
                 <PieChart>
                   <Pie data={pieData} cx="50%" cy="50%" outerRadius={90}
                     dataKey="value"
-                    label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) => percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : ''}
                     labelLine={false}>
                     {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
-                  <Tooltip formatter={(val) => [`${val} visits`]} />
+                  <Tooltip formatter={(val, name) => [`${val} visits`, name]} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
