@@ -300,7 +300,7 @@ export default function Register({ onGoLogin }) {
             </div>
 
             {/* Emergency Contact */}
-            <Field id="reg-emergency" label="Emergency contact" icon="📞" type="text" placeholder="Name and phone number" autoComplete="off" value={values.emergencyContact} onChange={e => set('emergencyContact', e.target.value)} error={errors.emergencyContact} />
+            <Field id="reg-emergency" label="Emergency contact" icon="📞" type="text" placeholder="Phone number" autoComplete="off" value={values.emergencyContact} onChange={e => set('emergencyContact', e.target.value)} error={errors.emergencyContact} />
 
             {/* Password */}
             <div className="mb-4">
